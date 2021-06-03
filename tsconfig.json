@@ -1,0 +1,43 @@
+{
+    "compileOnSave": false,
+    "compilerOptions": {
+        "resolveJsonModule": true,
+        "baseUrl": ".",
+        "outDir": "./dist/electron/main",
+        "sourceMap": true,
+        "declaration": false,
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "allowSyntheticDefaultImports": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "importHelpers": true,
+        "target": "es5",
+        "downlevelIteration": true,
+        "esModuleInterop": true,
+        "paths": {
+            "@config/*": [
+                "config/*"
+            ],
+            "@renderer/*": [
+                "src/renderer/*"
+            ],
+            "@main/*": [
+                "src/main/*"
+            ],
+            "*": [
+                "typings/*"
+            ],
+            "@vendor/*":[
+                "./vendor/*"
+            ]
+        },
+        "typeRoots": [
+            "node_modules/@types"
+        ],
+        "lib": [
+            "es2018",
+            "dom"
+        ]
+    }
+}
