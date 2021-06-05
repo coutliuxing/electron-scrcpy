@@ -42,17 +42,17 @@ export default {
     })
     ipcMain.handle('statr-server', async () => {
       Server.startDeviceServer()
-      try {
-        const serveStatus = await Server.StatrServer()
+      // try {
+      //   const serveStatus = await Server.StatrServer()
         
-        console.log(serveStatus)
-        return serveStatus
-      } catch (error) {
-        dialog.showErrorBox(
-          '错误',
-          error
-        )
-      }
+      //   console.log(serveStatus)
+      //   return serveStatus
+      // } catch (error) {
+      //   dialog.showErrorBox(
+      //     '错误',
+      //     error
+      //   )
+      // }
       
     })
     ipcMain.handle('stop-server', async (event, arg) => {

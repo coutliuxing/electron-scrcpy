@@ -19,6 +19,9 @@ app.set('port', port)
 
 export default {
   startDeviceServer(){
+    if(HttpServer.getInstance().getServer()){
+      return;
+    }
     const servicesToStart: ServiceClass[] = [HttpServer,WebSocketServer, AndroidDeviceTracker];
     const runningServices: Service[] = [];
 

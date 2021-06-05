@@ -8,7 +8,8 @@ import DroidDeviceDescriptor from '../../common/DroidDeviceDescriptor';
 import Tracker from '@devicefarmer/adbkit/lib/adb/tracker';
 import Timeout = NodeJS.Timeout;
 import { NetInterface } from '../../common/NetInterface';
-
+import path from 'path';
+import { AdbUtils } from '../AdbUtils';
 export interface AndroidDeviceTrackerEvents {
     device: DroidDeviceDescriptor;
 }
@@ -18,7 +19,7 @@ export class AndroidDeviceTracker extends TypedEmitter<AndroidDeviceTrackerEvent
     private static instance?: AndroidDeviceTracker;
 
     private initialized = false;
-    private client: AdbKitClient = AdbKit.createClient();
+    private client: AdbKitClient = AdbUtils.getClient();
     private tracker?: Tracker;
     private waitAfterError = 1000;
     private restartTimeoutId?: Timeout;

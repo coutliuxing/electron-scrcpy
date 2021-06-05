@@ -4,7 +4,7 @@ import Adb from '@devicefarmer/adbkit/lib/adb';
 import { DevtoolsInfo, RemoteBrowserInfo, RemoteTarget, VersionMetadata } from '../common/RemoteDevtools';
 import { URL } from 'url';
 import { Forward } from '@devicefarmer/adbkit/lib/Forward';
-
+import path from 'path';
 type IncomingMessage = {
     statusCode?: number;
     contentType?: string;
@@ -14,10 +14,13 @@ type IncomingMessage = {
 const proto = 'http://';
 const fakeHost = '127.0.0.1:6666';
 const fakeHostRe = /127\.0\.0\.1:6666/;
-
+const client = Adb.createClient({
+    "host":"127.0.0.1",
+    "bin":path.join(process.env.NODE_ENV === 'development'?path.resolve("")/*项目目录*/:process.resourcesPath,`vendor/${process.platform ==="win32"?"/adb/adb.exe":""}`)})
 export class AdbUtils {
+    
     public static async forward(serial: string, remote: string): Promise<number> {
-        const client = Adb.createClient();
+        // const client =Adb.createClient();
         const forwards = await client.listForwards(serial);
         const forward = forwards.find((item: Forward) => {
             return item.remote === remote && item.local.startsWith('tcp:') && item.serial === serial;
@@ -33,7 +36,7 @@ export class AdbUtils {
     }
 
     public static async getDevtoolsRemoteList(serial: string): Promise<string[]> {
-        const client = Adb.createClient();
+        // const client = Adb.createClient();
         const stream = await client.shell(serial, 'cat /proc/net/unix');
         const buffer = await Adb.util.readAll(stream);
         const lines = buffer
@@ -64,7 +67,7 @@ export class AdbUtils {
         unixSocketName: string,
         url: string,
     ): Promise<IncomingMessage> {
-        const client = Adb.createClient();
+        // const client = Adb.createClient();
         const socket = await client.openLocal(serial, `localabstract:${unixSocketName}`);
         const request = new (http.ClientRequest as any)(url, {
             createConnection: () => {
@@ -241,8 +244,11 @@ export class AdbUtils {
     }
 
     public static async getDeviceName(serial: string): Promise<string> {
-        const client = Adb.createClient();
+        // const client = Adb.createClient();
         const props = await client.getProperties(serial);
         return props['ro.product.model'] || 'Unknown device';
+    }
+    public static getClient(){
+        return client
     }
 }

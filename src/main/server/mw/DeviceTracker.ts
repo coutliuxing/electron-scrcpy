@@ -5,7 +5,8 @@ import DroidDeviceDescriptor from '../../common/DroidDeviceDescriptor';
 import { DeviceTrackerCommand } from '../../common/DeviceTrackerCommand';
 import { AndroidDeviceTracker } from '../services/AndroidDeviceTracker';
 import { ACTION } from '../Constants';
-
+import child_process from 'child_process';
+import { AdbUtils } from '../AdbUtils';
 export class DeviceTracker extends Mw {
     public static readonly TAG = 'DeviceTracker';
     private adt: AndroidDeviceTracker = AndroidDeviceTracker.getInstance();
@@ -19,8 +20,10 @@ export class DeviceTracker extends Mw {
 
     constructor(ws: WebSocket) {
         super(ws);
-
-        this.adt
+        const conn = `${AdbUtils.getClient().options["bin"]} devices`
+        const child =  child_process.spawn(conn, {shell: true});
+        child.stdout.on('data', (data) =>{
+            this.adt
             .init()
             .then(() => {
                 this.adt.on('device', this.buildAndSendMessage);
@@ -29,6 +32,10 @@ export class DeviceTracker extends Mw {
             .catch((e: Error) => {
                 console.error(`[${DeviceTracker.TAG}] Error: ${e.message}`);
             });
+        });
+        child.stderr.on('data', (data) =>{
+            console.log("child_process->",data.toString())
+        });
     }
 
     private buildAndSendMessage = (list: DroidDeviceDescriptor | DroidDeviceDescriptor[]): void => {

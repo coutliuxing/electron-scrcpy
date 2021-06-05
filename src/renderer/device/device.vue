@@ -1,5 +1,5 @@
 <template>
-<el-table  :data="device_arr" stripe style="width: 100%" >
+<el-table  :data="device_arr" stripe style="width: 100%;height:100%"  v-loading="loading">
       <el-table-column label="设备" width="180" align="center" prop="ro.product.model">
         <template #default="scope">
           <span>{{ scope.row['ro.product.model']}}</span>
@@ -72,6 +72,14 @@ export default {
   computed: {
   },
   created() {
+    ipcRenderer.invoke("statr-server").then((res) => {
+        if (res) {
+          this.$message({
+            type: "success",
+            message: res,
+          });
+        }
+      });
     this.devices()
       window.addEventListener('copy', function(event){
       console.log("copy",event)
@@ -91,6 +99,9 @@ export default {
     // });
     let that = this
     deviceSocket.onmessage =function(data){
+        if(that.loading){
+          that.loading = false
+        }
         let json = JSON.parse(data.data)
         if((json.data instanceof Array)){
           that.device_arr = JSON.parse(data.data).data

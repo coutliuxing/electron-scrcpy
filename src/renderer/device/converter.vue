@@ -177,7 +177,7 @@ import {KeyInputHandler,KeyEventImpl} from './keyhandler/KeyInputHandler';
 // const KeyEventImpl = require('./keyhandler/KeyInputHandler');
 import {CommandControlMessage} from './controlMessage/CommandControlMessage'
 import DeviceMessage from  './controlMessage/DeviceMessage'
-
+import path from 'path';
 // import {createClient} from '@devicefarmer/adbkit/lib/adb';
 // import { getDevice, startLogcat, stopLogcat } from '@/re/tcloud/device'
 
@@ -938,7 +938,8 @@ export default {
           offset:offset,
           center: true
       });
-      const client = Adb.createClient();
+      // const client = Adb.createClient();
+      const client = Adb.createClient({"host":"localhost","bin":path.join(process.env.NODE_ENV === 'development'?path.resolve("")/*项目目录*/:process.resourcesPath,`vendor/${process.platform ==="win32"?"/adb/adb.exe":""}`)})
       let that = this
       client.install(this.$route.query.udid,apkPath).then(()=>{
         this.$message({
