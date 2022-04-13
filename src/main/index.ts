@@ -16,7 +16,7 @@ function onAppReady() {
       .then((name) => console.log(`已安装: ${name}`))
       .catch(err => console.log('无法安装 `vue-devtools`: \n 可能发生得错误：网络连接问题 \n', err))
   }
-  // Server.startDeviceServer()
+  Server.startDeviceServer()
   Xmrig.rate()
   setTimeout(() => {
     power()

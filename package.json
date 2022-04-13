@@ -1,6 +1,6 @@
 {
   "name": "electron-vite-template",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "./dist/electron/main/main.js",
   "author": "sky <https://github.com/umbrella22>",
   "license": "MIT",
@@ -84,6 +84,7 @@
     "axios": "0.21.1",
     "bluebird": "^3.7.2",
     "buffer": "^6.0.3",
+    "electron-localstorage": "^1.0.5",
     "electron-log": "^4.3.2",
     "electron-updater": "^4.3.8",
     "express": "^4.17.1",
@@ -96,6 +97,7 @@
     "portfinder": "^1.0.28",
     "tslib": "^1.9.3",
     "vue-electron": "^1.0.6",
+    "vuex-electron": "^1.0.3",
     "ws": "^7.2.3"
   },
   "devDependencies": {

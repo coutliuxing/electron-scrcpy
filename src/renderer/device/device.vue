@@ -72,14 +72,14 @@ export default {
   computed: {
   },
   created() {
-    ipcRenderer.invoke("statr-server").then((res) => {
-        if (res) {
-          this.$message({
-            type: "success",
-            message: res,
-          });
-        }
-      });
+    // ipcRenderer.invoke("statr-server").then((res) => {
+    //     if (res) {
+    //       this.$message({
+    //         type: "success",
+    //         message: res,
+    //       });
+    //     }
+    //   });
     this.devices()
       window.addEventListener('copy', function(event){
       console.log("copy",event)

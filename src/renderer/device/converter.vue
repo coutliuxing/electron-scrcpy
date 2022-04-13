@@ -177,15 +177,19 @@ import {KeyInputHandler,KeyEventImpl} from './keyhandler/KeyInputHandler';
 // const KeyEventImpl = require('./keyhandler/KeyInputHandler');
 import {CommandControlMessage} from './controlMessage/CommandControlMessage'
 import DeviceMessage from  './controlMessage/DeviceMessage'
+import DisplayInfo from './DisplayInfo'
+import VideoSettings from "./VideoSettings"
+import ScreenInfo from "./ScreenInfo"
+const storage = require('electron-localstorage');
 import path from 'path';
 // import {createClient} from '@devicefarmer/adbkit/lib/adb';
 // import { getDevice, startLogcat, stopLogcat } from '@/re/tcloud/device'
-
 export default {
   name: 'Converter',
   data() {
     return {
       resizeChangeTimer:null,
+      screenTimer:null,
       clipboardInput:"",
       dialogVisible:false,
       logcat_type: 'D',
@@ -278,9 +282,7 @@ export default {
         sendFrameMeta: false
       },
       hasInitialInfo: false,
-      DisplayInfo: {
-        BUFFER_LENGTH: 24
-      },
+      displayInfo: null,
       state: 3,
       STATE2: {
         PLAYING: 1,
@@ -369,14 +371,19 @@ export default {
     }
     
   },
+  beforeCreate(){
+    
+  },
 
   created() {
+    
     // this.serial = this.$route.query.serial
     // console.log(this.serial)
     // const only_screen = this.$route.query.only_screen
     // if (only_screen !== undefined) {
     //   this.only_screen = true
     // }
+
 
     remote.getCurrentWindow().setTitle(this.$route.query.udid)
     // 初始化某些变量
@@ -386,28 +393,17 @@ export default {
     this.options.query = { serial: this.serial }
   },
   mounted() {
-    const winSize = remote.getCurrentWindow().getSize()
-    const bodyWidth = winSize[0] 
-    const bodyHeight = winSize[1]
-    this.currentSettings.bounds ={ height: bodyHeight, width : bodyWidth, h: bodyHeight, w:bodyWidth }
-    // console.log("mounted",remote.getCurrentWindow().getSize(),this.$route.query.udid)
     
-    // const main = document.getElementsByClassName('main')[0]
-    // main.style.width = bodyWidth + 'px'
-    // main.style.height = bodyHeight + 'px'
+    if(storage.getItem("isResizeWindow")){
+      let size = storage.getItem("size")
+      this.currentSettings.bounds = { height: size['height'], width : size['width'], h: size['height'], w: size['width'] }
+      storage.removeItem("isResizeWindow")
+    }
     this.initWebSocket()
-    // const videoDiv = document.getElementsByClassName('video')[0]
-    // videoDiv.style.width = bodyHeight + 'px'
-    // videoDiv.style.height = bodyHeight + 'px'
-    // this.currentSettings.bounds = { height: bodyHeight, width: bodyWidth, h: bodyHeight, w: bodyWidth }
-    // console.log(this.currentSettings,"=========")
-
-    // this.orientation = bodyWidth>=bodyHeight?0:1
-    // this.setScreenSize(bodyWidth,bodyHeight)
 
     this.touch_tag = document.getElementById('touch-player')
     document.addEventListener('visibilitychange', this.handleVisiable) 
-    console.log(remote.getGlobal("rate"))
+    // console.log(remote.getGlobal("rate"))
     // window.addEventListener("resize",this.resizeWindow);
     
   },
@@ -420,7 +416,6 @@ export default {
       this.log_ws.close()
     }
     this.pause()
-    console.log("unmounted")
     document.body.removeEventListener('mousedown', this.onMouseEvent)
     document.body.removeEventListener('mouseup', this.onMouseEvent)
     document.body.removeEventListener('mousemove', this.onMouseEvent)
@@ -475,11 +470,13 @@ export default {
                   that.reloadWindow = function(){
                     remote.getCurrentWindow().reload()
                   }
-                  remote.getCurrentWindow().on("will-resize",()=>{
+                  remote.getCurrentWindow().on("will-resize",(event, newBounds)=>{
+                    console.log("will-resize")
                     that.canRaw = false;
                     that.hasInitialInfo = false
+                    that.resizeWindow(event, newBounds)
                   })
-                  remote.getCurrentWindow().on("resize", that.resizeWindow);
+                  // remote.getCurrentWindow().on("resize", that.resizeWindow);
                 },100)
               }
               that.handleInitialInfo(data)
@@ -525,21 +522,25 @@ export default {
 
       rest = rest.slice(4)
       for (let i = 0; i < displaysCount; i++) {
-        rest = rest.slice(this.DisplayInfo.BUFFER_LENGTH)
+        const displayInfoBuffer = rest.slice(0, DisplayInfo.BUFFER_LENGTH);
+        this.displayInfo = DisplayInfo.fromBuffer(displayInfoBuffer);
+        // const { displayId } = displayInfo;
+        // this.displayInfoMap.set(displayId, displayInfo);
+        rest = rest.slice(DisplayInfo.BUFFER_LENGTH)
         rest = rest.slice(4)
         const screenInfoBytesCount = rest.readInt32BE(0)
         rest = rest.slice(4)
         if (screenInfoBytesCount) {
-          this.screenInfo = ScreenInfoFun.fromBuffer(rest.slice(0, screenInfoBytesCount))
+          this.screenInfo = ScreenInfo.fromBuffer(rest.slice(0, screenInfoBytesCount))
+          this.screenInfo.deviceRotation = this.displayInfo.rotation
           rest = rest.slice(screenInfoBytesCount)
         }
         const videoSettingsBytesCount = rest.readInt32BE(0)
         rest = rest.slice(4)
         if (videoSettingsBytesCount) {
-          this.videoSettings = VideoSettingsFun.fromBuffer(rest.slice(0, videoSettingsBytesCount))
+          this.videoSettings = VideoSettings.fromBuffer(rest.slice(0, videoSettingsBytesCount))
           rest = rest.slice(videoSettingsBytesCount)
         }
-        console.log(this.screenInfo , this.videoSettings)
       }
       this.hasInitialInfo = true
       this.triggerInitialInfoEvents()
@@ -562,8 +563,29 @@ export default {
         this.playing = true
         return
       }
+      // 如果旧的方向与新的方向不同，则把旧的横竖长度换过来重新请求
+      // console.log(storage.getItem("deviceRotation"),storage.getItem("size"),this.screenInfo.deviceRotation)
+      // if(storage.getItem("deviceRotation") && this.screenInfo.deviceRotation!=storage.getItem("deviceRotation")){
+      //     let size = storage.getItem("size")
+      //     console.log("======================",storage.getItem("size"))
+      //     this.currentSettings.bounds = { height: size["height"], width : size["width"], h: size["height"], w: size["width"] }
+      //     this.websocket.send(that.createSetVideoSettingsCommand())
+      //     // this.screenInfo.videoSize = {"width":size["height"],"height":size["width"]}
+      //     return
+      // }
+      if(this.screenTimer){
+        clearTimeout(this.screenTimer)
+      }
 
-      this.setScreen()
+      let that = this;
+      this.screenTimer =setTimeout(() => {
+        that.setScreen()
+        clearTimeout(that.screenTimer)
+
+      }, 50); 
+
+      // this.debounce(this.setScreen())
+      
     },
     createSetVideoSettingsCommand() {
       const temp = VideoSettingsFun.toBuffer(this.currentSettings)
@@ -576,12 +598,25 @@ export default {
 
       return buffer
     },
+    createVideoSettingsWithBounds(old, newBounds) {
+        return new VideoSettings({
+            crop: old.crop,
+            bitrate: old.bitrate,
+            bounds: newBounds,
+            maxFps: old.maxFps,
+            iFrameInterval: old.iFrameInterval,
+            sendFrameMeta: old.sendFrameMeta,
+            lockedVideoOrientation: old.lockedVideoOrientation,
+            displayId: old.displayId,
+            codecOptions: old.codecOptions,
+            encoderName: old.encoderName,
+        });
+    },
     play() {
       if (!this.screenInfo && true) {
         return
       }
       this.state = this.STATE2.PLAYING
-
       if (!this.converter) {
         const video_element = document.getElementById('video-player')
         const fpf = 1
@@ -637,47 +672,53 @@ export default {
         canvas_box.width = width
         canvas_box.height = height
         canvas_box.style.margin = `0 0 0 0`
-
+        
         this.setScreenSize(width,height)
         this.drop()
       }
     },
     setScreenSize(bodyWidth,bodyHeight){
+
       if(bodyWidth ==undefined || bodyHeight == undefined || bodyWidth <=0 || bodyHeight <=0 || bodyWidth === bodyHeight)
           return
       // remote.getCurrentWindow().resizable = true
-      remote.getCurrentWindow().setSize(bodyWidth+20+39,bodyHeight+42)
+      storage.setItem(`size`,{"width":bodyWidth,"height":bodyHeight})
+      storage.setItem("deviceRotation",this.screenInfo.deviceRotation)
+      bodyWidth = bodyWidth+42
+      bodyHeight = bodyHeight+4
+      // remote.getCurrentWindow().setContentBounds({ height: bodyHeight, width : bodyWidth, x: 50, y:50 })
+      // remote.getCurrentWindow().setSize(bodyWidth,bodyHeight)
+      remote.getCurrentWindow().setContentSize(bodyWidth,bodyHeight)
+      console.log("=====setScreenSize=========")
       // remote.getCurrentWindow().resizable = false
       
-      var bounds = this.currentSettings.bounds
-      // if(bounds.width != bodyWidth || bounds.height != bodyHeight){
-      //   this.currentSettings.bounds ={ height: bodyHeight, width : bodyWidth, h: bodyHeight, w: bodyWidth }
-      //   this.triggerInitialInfoEvents()
-      // }
     },
     resizeWindow(event, newBounds){
       const win = event.sender;
       event.preventDefault();//拦截，使窗口先不变
       const currentSize = win.getSize();
-      
       // const widthChanged = (currentSize[0] != newBounds.width);//判断是宽变了还是高变了，两者都变优先按宽适配
       // if(widthChanged){
       //     win.setContentSize(newBounds.width, parseInt(newBounds.width / (realSize.width / realSize.height) + 0.5));
       // } else {
       //     win.setContentSize(parseInt((realSize.width / realSize.height) * newBounds.height + 0.5), newBounds.height);
       // }
+      
       if(this.resizeChangeTimer){
         clearTimeout(this.resizeChangeTimer)
       }
       let that = this;
       this.resizeChangeTimer =setTimeout(() => {
+        storage.setItem("isResizeWindow",true)
+        that.screenInfo = null;
+        that.currentSettings.bounds = { height: currentSize[1], width : currentSize[0], h: currentSize[1], w: currentSize[0] }
+        that.websocket.send(that.createSetVideoSettingsCommand())
+        that.triggerInitialInfoEvents()
         that.canRaw = true;
         that.hasInitialInfo = true;
-        that.screenInfo = null;
-        that.currentSettings.bounds ={ height: currentSize[1], width : currentSize[0], h: currentSize[1], w: currentSize[0] }
-        // that.triggerInitialInfoEvents()
-        that.websocket.send(that.createSetVideoSettingsCommand())
+       
         clearTimeout(that.resizeChangeTimer)
+
       }, 1000); 
     },
     onVideo(data) {
@@ -960,6 +1001,40 @@ export default {
         });
       })
     },
+    getMaxSize() {
+        // if (!this.controlButtons) {
+        //     return;
+        // }
+        // const body = document.body;
+        // const width = (body.clientWidth - this.controlButtons.clientWidth) & ~15;
+        // const height = body.clientHeight & ~15;
+        const body = document.body;
+        const width = (body.clientWidth) & ~15;
+        const height = body.clientHeight & ~15;
+        return new Size(width, height);
+    },
+    debounce(fn, delay = 500) {
+      // 是闭包中的
+      let timer
+      
+    // input事件调用的函数，相当于obj调用函数 this指向Input
+        return function() {
+          // 这个if 判断不做也没关系，可直接清空，只有第一次timer非空
+        if(timer) {
+            claerTimeout(timer)
+        }
+        // 此时的箭头函数的this 和 arguments 都是从外部函数继承而来
+        // r如果用普通函数就要用词法作用域 var thsta = this var arg = arguments
+        timer = setTimeOut(() =>{
+            // 使得传入的回调函数的this 指向Input这个元素对象
+            // arguments是该事件的详情，可以获得该函数被调用时的所有参数,是一个event 对象（所有Dom事件都会传event对象进入）
+            // 直接使用 fn() 问题也不大
+            fn.apply(this,arguments) 
+            timer = null
+        },delay)
+      }
+    },
+
     // logcat 相关代码 -----------------------------------------------------------------------------
     startLog() {
       startLogcat({ serial: this.serial, type: this.logcat_type }).then(() => {

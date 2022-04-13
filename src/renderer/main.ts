@@ -9,7 +9,6 @@ import router from './router'
 import { errorHandler } from './error'
 
 
-
 const app = createApp(App)
 app.use(ElementPlus)
 app.use(router)

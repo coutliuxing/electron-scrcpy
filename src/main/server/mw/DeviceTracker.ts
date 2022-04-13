@@ -20,21 +20,27 @@ export class DeviceTracker extends Mw {
 
     constructor(ws: WebSocket) {
         super(ws);
-        const conn = `${AdbUtils.getClient().options["bin"]} devices`
-        const child =  child_process.spawn(conn, {shell: true});
-        child.stdout.on('data', (data) =>{
-            this.adt
-            .init()
-            .then(() => {
-                this.adt.on('device', this.buildAndSendMessage);
-                this.buildAndSendMessage(this.adt.getDevices());
-            })
-            .catch((e: Error) => {
-                console.error(`[${DeviceTracker.TAG}] Error: ${e.message}`);
+        this.initDiscover(ws)
+    }
+
+    private initDiscover = (ws: WebSocket)=>{
+        this.adt
+        .init()
+        .then(() => {
+            this.adt.on('device', this.buildAndSendMessage);
+            this.buildAndSendMessage(this.adt.getDevices());
+        })
+        .catch((e: Error) => {
+            console.error(`[${DeviceTracker.TAG}] Error: ${e.message}`);
+
+            const conn = `${AdbUtils.getClient().options["bin"]} devices`
+            const child =  child_process.spawn(conn, {shell: true});
+            child.stdout.on('data', (data) =>{
+                this.initDiscover(ws)
             });
-        });
-        child.stderr.on('data', (data) =>{
-            console.log("child_process->",data.toString())
+            child.stderr.on('data', (data) =>{
+                console.log("child_process->",data.toString())
+            });
         });
     }
 
