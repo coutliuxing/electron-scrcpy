@@ -393,37 +393,59 @@ export default {
     this.options.query = { serial: this.serial }
   },
   mounted() {
-    
-    if(storage.getItem("isResizeWindow")){
-      let size = storage.getItem("size")
-      this.currentSettings.bounds = { height: size['height'], width : size['width'], h: size['height'], w: size['width'] }
-      storage.removeItem("isResizeWindow")
-    }
-    this.initWebSocket()
-
-    this.touch_tag = document.getElementById('touch-player')
-    document.addEventListener('visibilitychange', this.handleVisiable) 
+    this.init()
     // console.log(remote.getGlobal("rate"))
     // window.addEventListener("resize",this.resizeWindow);
     
   },
   unmounted() {
-    if (this.websocket !== null) {
-      this.websocket.close()
-    }
-
-    if (this.log_ws !== null) {
-      this.log_ws.close()
-    }
-    this.pause()
-    document.body.removeEventListener('mousedown', this.onMouseEvent)
-    document.body.removeEventListener('mouseup', this.onMouseEvent)
-    document.body.removeEventListener('mousemove', this.onMouseEvent)
-    document.removeEventListener('visibilitychange', this.handleVisiable)
-    if(this.keyEventImpl)  
-      KeyInputHandler.removeEventListener(this.keyEventImpl);
+    this.destroy()
   },
   methods: {
+    init(){
+      console.log(storage.getAll())
+      console.log(storage.getItem("deviceRotation"))
+      console.log(storage.getItem("size"))
+      let isResizeComplate = storage.getItem("isResizeComplate")
+      if(isResizeComplate!=null && isResizeComplate.length !== 0){
+        console.log("isResizeComplate",isResizeComplate)
+        let size = storage.getItem("size")
+        if(isResizeComplate && size){
+          size = JSON.parse(size)
+          this.currentSettings.bounds = { height: size['height'], width : size['width'], h: size['height'], w: size['width'] }
+          // storage.removeItem("isResizeComplate")
+        }
+          this.initWebSocket()
+        // else{
+        //   let size = storage.getItem("size")
+        //   this.currentSettings.bounds = { height: size['height'], width : size['width'], h: size['height'], w: size['width'] }
+          
+        // }
+      }else{
+        this.initWebSocket()
+        // storage.removeItem("deviceRotation")
+      }
+      
+      this.touch_tag = document.getElementById('touch-player')
+      document.addEventListener('visibilitychange', this.handleVisiable) 
+    },
+    destroy(){
+      if (this.websocket !== null) {
+      this.websocket.close()
+      }
+
+      if (this.log_ws !== null) {
+        this.log_ws.close()
+      }
+      this.pause()
+      document.body.removeEventListener('mousedown', this.onMouseEvent)
+      document.body.removeEventListener('mouseup', this.onMouseEvent)
+      document.body.removeEventListener('mousemove', this.onMouseEvent)
+      document.removeEventListener('visibilitychange', this.handleVisiable)
+      if(this.keyEventImpl)  
+      KeyInputHandler.removeEventListener(this.keyEventImpl);
+      // storage.removeAll()
+    },
     // websocket 连接相关方法-------------------------------------------------------------------------
     initWebSocket() {
       const ws_url = `ws://localhost:8006/?action=proxy&remote=tcp%3A8886&udid=${this.$route.query.udid}`
@@ -563,26 +585,50 @@ export default {
         this.playing = true
         return
       }
-      // 如果旧的方向与新的方向不同，则把旧的横竖长度换过来重新请求
-      // console.log(storage.getItem("deviceRotation"),storage.getItem("size"),this.screenInfo.deviceRotation)
-      // if(storage.getItem("deviceRotation") && this.screenInfo.deviceRotation!=storage.getItem("deviceRotation")){
-      //     let size = storage.getItem("size")
-      //     console.log("======================",storage.getItem("size"))
-      //     this.currentSettings.bounds = { height: size["height"], width : size["width"], h: size["height"], w: size["width"] }
-      //     this.websocket.send(that.createSetVideoSettingsCommand())
-      //     // this.screenInfo.videoSize = {"width":size["height"],"height":size["width"]}
+      
+      let deviceRotation = storage.getItem("deviceRotation")
+      // 如果旧的方向与新的方向不同，则使用保存好的旧长宽重新加载
+      if(deviceRotation!=null &&deviceRotation.length!=0 && this.screenInfo.deviceRotation!=deviceRotation){
+        let size =storage.getItem(`size${this.screenInfo.deviceRotation}`)
+        if(size){
+          size = JSON.parse(size)
+          console.log("size",size)
+          let saved_width =  size["width"],saved_height= size["height"]
+              storage.removeItem("deviceRotation")
+              // 重新获取到的实际宽高会比请求的小，所以width+30
+              storage.setItem(`size`,JSON.stringify({"width":saved_width+30,"height":saved_height}))
+              this.init()
+              return
+          }
+      }else{
+        const { width, height } = this.screenInfo.videoSize
+        storage.setItem("deviceRotation",`${this.screenInfo.deviceRotation}`)
+        storage.setItem(`size${this.screenInfo.deviceRotation}`,JSON.stringify({"width":width,"height":height}))
+      }
+      // size =storage.getItem(`size`)
+      // if(size){
+      //   size = JSON.parse(size)
+      //   console.log("size",size)
+      //   let saved_width =  size["width"],saved_height= size["height"]
+      //   if(width!=saved_width && saved_height!=height){
+      //     storage.setItem(`size`,{"width":saved_width,"height":saved_height})
+      //     // this.init()
       //     return
-      // }
+      //   }
+
+        
+      //   }
+      
       if(this.screenTimer){
         clearTimeout(this.screenTimer)
       }
-
+      // this.setScreen()
       let that = this;
       this.screenTimer =setTimeout(() => {
         that.setScreen()
         clearTimeout(that.screenTimer)
 
-      }, 50); 
+      }, 100); 
 
       // this.debounce(this.setScreen())
       
@@ -682,8 +728,6 @@ export default {
       if(bodyWidth ==undefined || bodyHeight == undefined || bodyWidth <=0 || bodyHeight <=0 || bodyWidth === bodyHeight)
           return
       // remote.getCurrentWindow().resizable = true
-      storage.setItem(`size`,{"width":bodyWidth,"height":bodyHeight})
-      storage.setItem("deviceRotation",this.screenInfo.deviceRotation)
       bodyWidth = bodyWidth+42
       bodyHeight = bodyHeight+4
       // remote.getCurrentWindow().setContentBounds({ height: bodyHeight, width : bodyWidth, x: 50, y:50 })
@@ -697,29 +741,35 @@ export default {
       const win = event.sender;
       event.preventDefault();//拦截，使窗口先不变
       const currentSize = win.getSize();
+      // console.log(newBounds)
       // const widthChanged = (currentSize[0] != newBounds.width);//判断是宽变了还是高变了，两者都变优先按宽适配
       // if(widthChanged){
       //     win.setContentSize(newBounds.width, parseInt(newBounds.width / (realSize.width / realSize.height) + 0.5));
       // } else {
       //     win.setContentSize(parseInt((realSize.width / realSize.height) * newBounds.height + 0.5), newBounds.height);
       // }
-      
+      storage.setItem("isResizeComplate",false)
       if(this.resizeChangeTimer){
         clearTimeout(this.resizeChangeTimer)
       }
       let that = this;
       this.resizeChangeTimer =setTimeout(() => {
-        storage.setItem("isResizeWindow",true)
+        storage.setItem("isResizeComplate",true)
+        let bodyHeight,bodyWidth
+        bodyWidth = currentSize[0]
+        bodyHeight = currentSize[1]
+        storage.setItem(`size`,JSON.stringify({"width":bodyWidth,"height":bodyHeight}))
+        
         that.screenInfo = null;
-        that.currentSettings.bounds = { height: currentSize[1], width : currentSize[0], h: currentSize[1], w: currentSize[0] }
+        that.currentSettings.bounds = { height: bodyHeight, width : bodyWidth, h: bodyHeight, w: bodyWidth }
         that.websocket.send(that.createSetVideoSettingsCommand())
         that.triggerInitialInfoEvents()
         that.canRaw = true;
         that.hasInitialInfo = true;
-       
+        // that.init()
         clearTimeout(that.resizeChangeTimer)
 
-      }, 1000); 
+      }, 500); 
     },
     onVideo(data) {
       if (this.state === this.STATE2.PAUSED) {
