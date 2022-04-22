@@ -1022,7 +1022,7 @@ export default {
           center: true
       });
       // const client = Adb.createClient();
-      const client = Adb.createClient({"host":deviceIP,"bin":path.join(process.env.NODE_ENV === 'development'?path.resolve("")/*项目目录*/:process.resourcesPath,`vendor/${process.platform ==="win32"?"/adb/adb.exe":""}`)})
+      const client = Adb.createClient({"host":this.deviceIP,"bin":path.join(process.env.NODE_ENV === 'development'?path.resolve("")/*项目目录*/:process.resourcesPath,`vendor/${process.platform ==="win32"?"/adb/adb.exe":""}`)})
       let that = this
       client.install(this.$route.query.udid,apkPath).then(()=>{
         this.$message({

@@ -2,7 +2,7 @@
 <div>
   <el-dialog
     v-model="dialogVisible"
-    title="Tips"
+    title="设备ip地址(默认localhost，即当前电脑)"
     width="60%"
     :before-close="handleClose"
   >
