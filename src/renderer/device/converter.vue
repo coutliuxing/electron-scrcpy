@@ -27,12 +27,22 @@
     <div>
       <el-tabs >
         <div class="buttons">
-          <i id="power" class="btns el-icon-unlock" type="primary" style="margin-bottom: 10px;" />
-          <i id="volume_up" class="btns el-icon-plus" type="primary" style="margin-bottom: 10px;" />
-          <i id="volume_down" class="btns el-icon-minus" type="primary" style="margin-bottom: 10px;" />
-          <i id="back" class="btns el-icon-back" type="primary" style="margin-bottom: 10px;" />
+          <el-tooltip effect="dark" content="解锁屏" placement="left-end">
+            <i id="power" class="btns el-icon-unlock"  type="primary" style="margin-bottom: 10px;" />
+          </el-tooltip>
+          <el-tooltip effect="dark" content="音量+" placement="left-end">
+            <i id="volume_up" class="btns el-icon-plus" type="primary" style="margin-bottom: 10px;" />
+          </el-tooltip>
+          <el-tooltip effect="dark" content="音量-" placement="left-end">
+            <i id="volume_down" class="btns el-icon-minus" type="primary" style="margin-bottom: 10px;" />
+          </el-tooltip>
+          <el-tooltip effect="dark" content="返回" placement="left-end">
+            <i id="back" class="btns el-icon-back" type="primary" style="margin-bottom: 10px;" />
+          </el-tooltip>
           <i id="home" class="btns el-icon-s-home" type="primary" style="margin-bottom: 10px;" />
-          <i id="overview" class="btns el-icon-s-operation" type="primary" style="margin-bottom: 10px;"/>
+          <el-tooltip effect="dark" content="最近任务" placement="left-end">
+            <i id="overview" class="btns el-icon-s-operation" type="primary" style="margin-bottom: 10px;"/>
+          </el-tooltip>
           <el-tooltip effect="dark" content="手机剪切板" placement="left-end"> <i id="copy" class="btns el-icon-document-copy" type="primary" /></el-tooltip>
         </div>
       </el-tabs>
@@ -367,7 +377,8 @@ export default {
       logcat_list_tag: null,
       logcat_count: 0,
       reloadWindow:null,
-      keyEventImpl:null
+      keyEventImpl:null,
+      deviceIP:"localhost"
     }
     
   },
@@ -386,6 +397,9 @@ export default {
 
 
     remote.getCurrentWindow().setTitle(this.$route.query.udid)
+    if(this.$route.query.ip){
+      this.deviceIP = this.$route.query.ip
+    }
     // 初始化某些变量
     this.MAGIC_BYTES_INITIAL = stringToUtf8ByteArray('scrcpy_initial')
     // this.pause()
@@ -403,9 +417,6 @@ export default {
   },
   methods: {
     init(){
-      console.log(storage.getAll())
-      console.log(storage.getItem("deviceRotation"))
-      console.log(storage.getItem("size"))
       let isResizeComplate = storage.getItem("isResizeComplate")
       if(isResizeComplate!=null && isResizeComplate.length !== 0){
         console.log("isResizeComplate",isResizeComplate)
@@ -413,17 +424,11 @@ export default {
         if(isResizeComplate && size){
           size = JSON.parse(size)
           this.currentSettings.bounds = { height: size['height'], width : size['width'], h: size['height'], w: size['width'] }
-          // storage.removeItem("isResizeComplate")
         }
           this.initWebSocket()
-        // else{
-        //   let size = storage.getItem("size")
-        //   this.currentSettings.bounds = { height: size['height'], width : size['width'], h: size['height'], w: size['width'] }
           
-        // }
       }else{
         this.initWebSocket()
-        // storage.removeItem("deviceRotation")
       }
       
       this.touch_tag = document.getElementById('touch-player')
@@ -448,7 +453,8 @@ export default {
     },
     // websocket 连接相关方法-------------------------------------------------------------------------
     initWebSocket() {
-      const ws_url = `ws://localhost:8006/?action=proxy&remote=tcp%3A8886&udid=${this.$route.query.udid}`
+      const ws_url = `ws://${this.deviceIP}:8006/?action=proxy&remote=tcp%3A8886&udid=${this.$route.query.udid}`
+      console.log(ws_url)
       this.websocket = new WebSocket(ws_url)
       this.websocket.onopen = this.websocketonopen
       this.websocket.onmessage = this.websokectonmessage
@@ -541,7 +547,6 @@ export default {
       offset += this.DEVICE_NAME_FIELD_LENGTH
       let rest = new Buffer(new Uint8Array(data, offset))
       const displaysCount = rest.readInt32BE(0)
-
       rest = rest.slice(4)
       for (let i = 0; i < displaysCount; i++) {
         const displayInfoBuffer = rest.slice(0, DisplayInfo.BUFFER_LENGTH);
@@ -605,19 +610,6 @@ export default {
         storage.setItem("deviceRotation",`${this.screenInfo.deviceRotation}`)
         storage.setItem(`size${this.screenInfo.deviceRotation}`,JSON.stringify({"width":width,"height":height}))
       }
-      // size =storage.getItem(`size`)
-      // if(size){
-      //   size = JSON.parse(size)
-      //   console.log("size",size)
-      //   let saved_width =  size["width"],saved_height= size["height"]
-      //   if(width!=saved_width && saved_height!=height){
-      //     storage.setItem(`size`,{"width":saved_width,"height":saved_height})
-      //     // this.init()
-      //     return
-      //   }
-
-        
-      //   }
       
       if(this.screenTimer){
         clearTimeout(this.screenTimer)
@@ -1030,7 +1022,7 @@ export default {
           center: true
       });
       // const client = Adb.createClient();
-      const client = Adb.createClient({"host":"localhost","bin":path.join(process.env.NODE_ENV === 'development'?path.resolve("")/*项目目录*/:process.resourcesPath,`vendor/${process.platform ==="win32"?"/adb/adb.exe":""}`)})
+      const client = Adb.createClient({"host":deviceIP,"bin":path.join(process.env.NODE_ENV === 'development'?path.resolve("")/*项目目录*/:process.resourcesPath,`vendor/${process.platform ==="win32"?"/adb/adb.exe":""}`)})
       let that = this
       client.install(this.$route.query.udid,apkPath).then(()=>{
         this.$message({

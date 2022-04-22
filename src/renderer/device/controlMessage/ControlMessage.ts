@@ -10,10 +10,11 @@ export class ControlMessage {
     public static TYPE_BACK_OR_SCREEN_ON = 4;
     public static TYPE_EXPAND_NOTIFICATION_PANEL = 5;
     public static TYPE_COLLAPSE_NOTIFICATION_PANEL = 6;
-    public static TYPE_GET_CLIPBOARD = 7;
-    public static TYPE_SET_CLIPBOARD = 8;
-    public static TYPE_SET_SCREEN_POWER_MODE = 9;
-    public static TYPE_ROTATE_DEVICE = 10;
+    public static TYPE_COLLAPSE_PANELS = 7;
+    public static TYPE_GET_CLIPBOARD = 8;
+    public static TYPE_SET_CLIPBOARD = 9;
+    public static TYPE_SET_SCREEN_POWER_MODE = 10;
+    public static TYPE_ROTATE_DEVICE = 11;
     public static TYPE_CHANGE_STREAM_PARAMETERS = 101;
     public static TYPE_PUSH_FILE = 102;
 

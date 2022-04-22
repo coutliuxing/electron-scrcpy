@@ -1,5 +1,21 @@
 <template>
-<el-table  :data="device_arr" stripe style="width: 100%;height:100%"  v-loading="loading">
+<div>
+  <el-dialog
+    v-model="dialogVisible"
+    title="Tips"
+    width="60%"
+    :before-close="handleClose"
+  >
+    <el-input v-model="ipAddress" >
+    </el-input>
+    <div class="ip-input-alter">ps:如需连接其他电脑的手机设备，输入对应ip并确保对应电脑启动了本客户端</div>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="setAndClose" size="mini">确定</el-button>
+      </span>
+  </template>
+  </el-dialog>
+  <el-table  :data="device_arr" stripe style="width: 100%;height:100%"  v-loading="loading">
       <el-table-column label="设备" width="180" align="center" prop="ro.product.model">
         <template #default="scope">
           <span>{{ scope.row['ro.product.model']}}</span>
@@ -31,6 +47,8 @@
       </template>
       </el-table-column>
     </el-table>
+</div>
+
 </template>
 
 <style lang="scss">
@@ -48,6 +66,9 @@
   position: absolute;
   z-index: 1;
 }
+.ip-input-alter {
+  margin: 10px 10px 10px 10px;
+}
 </style>
 
 <style scoped>
@@ -61,12 +82,15 @@
 
 <script>
 const { ipcRenderer } = require("electron");
+import { ElMessage, ElMessageBox } from 'element-plus'
 export default {
   name: 'DeviceControl',
   data() {
     return {
       loading: true,
-      device_arr:[]
+      device_arr:[],
+      dialogVisible:true,
+      ipAddress:"localhost"
     }
   },
   computed: {
@@ -80,9 +104,9 @@ export default {
     //       });
     //     }
     //   });
-    this.devices()
-      window.addEventListener('copy', function(event){
-      console.log("copy",event)
+
+    window.addEventListener('copy', function(event){
+    console.log("copy",event)
     });
   },
   unmounted() {
@@ -93,7 +117,7 @@ export default {
   },
   methods: { 
     devices(){
-    const deviceSocket = new WebSocket(`ws://localhost:8006/?action=droid-device-list`)
+    const deviceSocket = new WebSocket(`ws://${this.ipAddress}:8006/?action=droid-device-list`)
     // ws.on('open', function open() {
     //   ws.send('something');
     // });
@@ -115,10 +139,11 @@ export default {
           that.device_arr.push(json.data)
         }
       }
+      deviceSocket.onerror = this.websocketonerror
     },
     open(index,row){
       let data = {
-        url: `/converter?udid=${row['udid']}`,
+        url: `/converter?udid=${row['udid']}&ip=${this.ipAddress}`,
         udid:row['udid'],
         height:560,
         width:560
@@ -127,7 +152,27 @@ export default {
     },
     checkState(row){
       return row['state'] ==="device"
-    }
+    },
+    setAndClose(){
+      this.dialogVisible = !this.dialogVisible
+      this.devices()
+    },
+    websocketonerror() {
+      let that = this
+      ElMessageBox.alert('请求失败，请确认ip正确及客户端正常启动', '错误提示'
+      , {
+      confirmButtonText: 'OK',
+      callback: (action) => {
+          // ElMessage({
+          //   type: 'info',
+          //   message: `action: ${action}`,
+          // })
+          that.dialogVisible = true
+        },
+      }
+      )
+      remote.getCurrentWindow().close()
+    },
   }
 }
 </script>
