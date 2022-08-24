@@ -520,6 +520,7 @@ export default {
                 that.clipboardInput = message.getText();
                 return;
                 }
+
           }
           that.onVideo(new Uint8Array(data))
         }
@@ -564,12 +565,13 @@ export default {
         }
         
         const videoSettingsBytesCount = rest.readInt32BE(0)
+        console.log(videoSettingsBytesCount)
         rest = rest.slice(4)
+        console.log(rest.length)
         if (videoSettingsBytesCount) {
           this.videoSettings = VideoSettings.fromBuffer(rest.slice(0, videoSettingsBytesCount))
           rest = rest.slice(videoSettingsBytesCount)
           console.log(this.videoSettings)
-          
         }
       }
       this.hasInitialInfo = true

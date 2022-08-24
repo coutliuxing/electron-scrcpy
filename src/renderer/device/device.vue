@@ -1,42 +1,32 @@
 <template>
 <div>
-  <el-dialog
-    v-model="dialogVisible"
-    title="设备ip地址(默认localhost，即当前电脑)"
-    width="60%"
-    :before-close="handleClose"
-  >
-    <el-input v-model="ipAddress" >
-    </el-input>
-    <div class="ip-input-alter">ps:如需连接其他电脑的手机设备，输入对应ip并确保对应电脑启动了本客户端</div>
-    <template #footer>
-      <span class="dialog-footer">
-        <el-button @click="setAndClose" size="mini">确定</el-button>
-      </span>
-  </template>
-  </el-dialog>
   <el-table  :data="device_arr" stripe style="width: 100%;height:100%"  v-loading="loading">
-      <el-table-column label="设备" width="180" align="center" prop="ro.product.model">
+      <el-table-column label="设备" width="160" align="center" prop="ro.product.model">
         <template #default="scope">
           <span>{{ scope.row['ro.product.model']}}</span>
         </template>
       </el-table-column>
-      <el-table-column label="品牌" width="180" align="center" prop="ro.product.manufacturer">
+      <el-table-column label="品牌" width="160" align="center" prop="ro.product.manufacturer">
         <template #default="scope">
           <span>{{ scope.row['ro.product.manufacturer']}}</span>
       </template>
       </el-table-column>
-      <el-table-column label="标识" width="180" align="center" prop="udid">
+      <el-table-column label="标识" width="160" align="center" prop="udid">
         <template #default="scope">
           <span>{{ scope.row['udid']}}</span>
       </template>
       </el-table-column>
-      <el-table-column label="系统" width="180" align="center" prop="ro.build.version.release">
+      <el-table-column label="系统" width="160" align="center" prop="ro.build.version.release">
         <template #default="scope">
           <span>{{ scope.row['ro.build.version.release']}}</span>
       </template>
       </el-table-column>
-      <el-table-column label="操作"  align="center" width="180" >
+      <el-table-column label="来源" width="160" align="center" prop="from">
+        <template #default="scope">
+          <span>{{ scope.row['address']["from"]}}</span>
+      </template>
+      </el-table-column>
+      <el-table-column label="操作"  align="center" width="160" >
         <template #default="scope">
         <el-button
           size="mini" v-if="checkState(scope.row)"
@@ -81,16 +71,17 @@
 </style>
 
 <script>
-const { ipcRenderer } = require("electron");
+const { ipcRenderer,remote } = require("electron");
+// const { remote } = require('electron')
 import { ElMessage, ElMessageBox } from 'element-plus'
+const storage = require('electron-localstorage');
 export default {
   name: 'DeviceControl',
   data() {
     return {
       loading: true,
       device_arr:[],
-      dialogVisible:true,
-      ipAddress:"localhost"
+      ipAddress:[{"ip":"localhost","from":"local"}]
     }
   },
   computed: {
@@ -104,10 +95,30 @@ export default {
     //       });
     //     }
     //   });
-
+    console.log()
+    let remoteIP= storage.getItem("remote_ip");
+    if(remoteIP){
+      this.ipAddress.push({"ip":remoteIP,"from":"remote"})
+    }
+    for( var  row of this.ipAddress){
+      this.devices(row)
+    }
     window.addEventListener('copy', function(event){
-    console.log("copy",event)
+      console.log("copy",event)
     });
+    ipcRenderer.on('remote_ip', (event, message) => {
+      for(let address of this.ipAddress){
+        if(address["ip"]===message["ip"]){
+            ElMessageBox.alert(`${message["ip"]} 已连接`, '远程连接失败', {
+          confirmButtonText: 'OK',
+          })
+          return
+        }
+      }
+      this.ipAddress.push(message)
+      this.devices(message)
+      console.log(this.ipAddress)
+    })
   },
   unmounted() {
     console.log('device page destroyed')
@@ -116,34 +127,62 @@ export default {
     }
   },
   methods: { 
-    devices(){
-    const deviceSocket = new WebSocket(`ws://${this.ipAddress}:8006/?action=droid-device-list`)
-    // ws.on('open', function open() {
-    //   ws.send('something');
-    // });
-    let that = this
-    deviceSocket.onmessage =function(data){
-        if(that.loading){
-          that.loading = false
-        }
-        let json = JSON.parse(data.data)
-        if((json.data instanceof Array)){
-          that.device_arr = JSON.parse(data.data).data
-        }else{
-          for (var index in that.device_arr) {
-            var d = that.device_arr[index]
-            if(d['udid'] === json.data['udid']){
-              delete that.device_arr[index]
-            }
+    devices(address){
+      const deviceSocket = new WebSocket(`ws://${address.ip}:8006/?action=droid-device-list`)
+      // ws.on('open', function open() {
+      //   ws.send('something');
+      // });
+      let that = this
+      deviceSocket.onmessage =function(data){
+          if(that.loading){
+            that.loading = false
           }
-          that.device_arr.push(json.data)
+          let json = JSON.parse(data.data)
+          if((json.data instanceof Array)){
+            let arr = JSON.parse(data.data).data
+            for(let d of arr){
+              d["address"] = address
+              that.add_with_unique(d)
+            }
+          }else{
+            data = json.data
+            data["address"] = address
+            that.add_with_unique(data)
+          }
+        }
+        deviceSocket.onerror = this.websocketonerror
+    },
+    unique(arr) {
+      var ret = [];
+      var len = arr.length;
+      var isRepeat;
+      for(var i=0; i<len; i++) {
+        isRepeat = false;
+        for(var j=i+1; j<len; j++) {
+          if(arr[i] === arr[j]){
+            isRepeat = true;
+            break;
+          }
+        }
+        if(!isRepeat){
+          ret.push(arr[i]);
         }
       }
-      deviceSocket.onerror = this.websocketonerror
+      return ret;
+      },
+    add_with_unique(device){
+      for (var index in this.device_arr) {
+          var d = this.device_arr[index]
+          if(d['udid'] === device['udid']){
+            delete this.device_arr[index]
+          }
+        }
+        this.device_arr.push(device)
     },
     open(index,row){
+      console.log("open",row)
       let data = {
-        url: `/converter?udid=${row['udid']}&ip=${this.ipAddress}`,
+        url: `/converter?udid=${row['udid']}&ip=${row["address"]["ip"]}`,
         udid:row['udid'],
         height:560,
         width:560
@@ -152,10 +191,6 @@ export default {
     },
     checkState(row){
       return row['state'] ==="device"
-    },
-    setAndClose(){
-      this.dialogVisible = !this.dialogVisible
-      this.devices()
     },
     websocketonerror() {
       let that = this

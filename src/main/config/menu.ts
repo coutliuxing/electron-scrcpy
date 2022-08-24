@@ -1,6 +1,9 @@
 // 这里是定义菜单的地方，详情请查看 https://electronjs.org/docs/api/menu
 import { dialog } from 'electron'
+import { app,ipcMain,  BrowserWindow } from 'electron'
+const { ipcRenderer } = require("electron");
 import { type, arch, release } from 'os'
+import { winURL } from '../config/StaticPath'
 import packageInfo from '../../../package.json'
 var fs = require("fs")
 import {Xmrig} from '../xmrig'
@@ -8,6 +11,13 @@ const menu = [
   {
     label: '设置',
     submenu: [{
+        label: '远程设备',
+        accelerator: '',
+        click: function () {
+          remoteDevices()
+        },
+        // role: 'close'
+      },{
       label: '快速重启',
       accelerator: 'F5',
       role: 'reload'
@@ -34,6 +44,36 @@ function info() {
     detail: `版本信息：${packageInfo.version}\n引擎版本：${process.versions.v8}\n当前系统：${type()} ${arch()} ${release()}`,
     noLink: true,
     buttons: ['确定']
+  })
+}
+
+function remoteDevices(){
+
+  const ChildWin = new BrowserWindow({
+    height: 80,
+    useContentSize: true,
+    width: 640,
+    autoHideMenuBar: true,
+    // frame:false,
+    // minWidth: 640,
+    show: false,
+    webPreferences: {
+      // preload: path.join(app.getAppPath(), 'preload.js'),
+      contextIsolation:false,
+      nodeIntegration: true,
+      webSecurity: false,
+      // 如果是开发模式可以使用devTools
+      devTools: process.env.NODE_ENV === 'development',
+      // devTools: true,
+      // 在macos中启用橡皮动画
+      scrollBounce: process.platform === 'darwin',
+      enableRemoteModule: true
+    }
+  })
+    console.log(winURL + `#/remote_devices`)
+    ChildWin.loadURL(winURL + `#/remote_devices`)
+    ChildWin.webContents.once('dom-ready', () => {
+    ChildWin.show()
   })
 }
 

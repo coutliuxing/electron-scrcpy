@@ -92,7 +92,7 @@ export default {
           enableRemoteModule: true
         }
       })
-      console.log(winURL,arg.url)
+      console.log(winURL + `#${arg.url}`)
       // ChildWin.loadURL(`${arg.url}`)
       ChildWin.loadURL(winURL + `#${arg.url}`)  
       ChildWin.webContents.once('dom-ready', () => {
