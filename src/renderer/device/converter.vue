@@ -53,8 +53,6 @@
 
 <style lang="scss">
 .video {
-  // width: 320px;
-  // height: 720px;
   float: right;
   position: absolute;
   border: 1px dashed #cccccc;
@@ -179,6 +177,7 @@ import ScreenInfoFun from './js/ScreenInfoFun'
 import VideoSettingsFun from './js/VideoSettingsFun'
 import ToucherFun from './js/ToucherFun'
 import KeyCodeFun from './js/KeyCodeFun'
+import { ElMessage, ElMessageBox  } from 'element-plus'
 // import  Buffer  from 'buffer/'
 const {Buffer} = require('buffer/')
 const { remote } = require('electron')
@@ -191,9 +190,6 @@ import DisplayInfo from './DisplayInfo'
 import VideoSettings from "./VideoSettings"
 import ScreenInfo from "./ScreenInfo"
 const storage = require('electron-localstorage');
-import path from 'path';
-// import {createClient} from '@devicefarmer/adbkit/lib/adb';
-// import { getDevice, startLogcat, stopLogcat } from '@/re/tcloud/device'
 export default {
   name: 'Converter',
   data() {
@@ -378,7 +374,11 @@ export default {
       logcat_count: 0,
       reloadWindow:null,
       keyEventImpl:null,
-      deviceIP:"localhost"
+      deviceIP:"localhost",
+      wsUrl:"",
+      adbRemote:"",
+      adbBin:"",
+      adbClient:null
     }
     
   },
@@ -395,7 +395,6 @@ export default {
     //   this.only_screen = true
     // }
 
-
     remote.getCurrentWindow().setTitle(this.$route.query.udid)
     if(this.$route.query.ip){
       this.deviceIP = this.$route.query.ip
@@ -405,31 +404,32 @@ export default {
     // this.pause()
     // setLogger(() => {}, console.error)
     this.options.query = { serial: this.serial }
+    // this.adbBin = path.join(process.env.NODE_ENV === 'development'?path.resolve("")/*项目目录*/:process.resourcesPath,`vendor/${process.platform ==="win32"?"/adb/adb.exe":""}`)
+    this.adbBin = "adb"
+    this.adbClient =  Adb.createClient({"host":this.deviceIP,"bin":this.adbBin})
   },
   mounted() {
-    this.init()
-    // console.log(remote.getGlobal("rate"))
-    // window.addEventListener("resize",this.resizeWindow);
-    
+    // 云测需要准备时间，所以要隔一点时间去连接ws
+    if(this.wsUrl){
+      setTimeout(()=>{
+        this.init()
+      },1000);
+    }else{
+      this.init()
+    }
+
+    window.addEventListener('beforeunload', () => {
+      this.destroy()
+    })
   },
   unmounted() {
     this.destroy()
+    
   },
   methods: {
     init(){
-      let isResizeComplate = storage.getItem("isResizeComplate")
-      if(isResizeComplate!=null && isResizeComplate.length !== 0){
-        console.log("isResizeComplate",isResizeComplate)
-        let size = storage.getItem("size")
-        if(isResizeComplate && size){
-          size = JSON.parse(size)
-          this.currentSettings.bounds = { height: size['height'], width : size['width'], h: size['height'], w: size['width'] }
-        }
-          this.initWebSocket()
-          
-      }else{
-        this.initWebSocket()
-      }
+
+      this.initWebSocket()
       
       this.touch_tag = document.getElementById('touch-player')
       document.addEventListener('visibilitychange', this.handleVisiable) 
@@ -439,9 +439,9 @@ export default {
       this.websocket.close()
       }
 
-      if (this.log_ws !== null) {
-        this.log_ws.close()
-      }
+      // if (this.log_ws !== null) {
+      //   this.log_ws.close()
+      // }
       this.pause()
       document.body.removeEventListener('mousedown', this.onMouseEvent)
       document.body.removeEventListener('mouseup', this.onMouseEvent)
@@ -449,11 +449,13 @@ export default {
       document.removeEventListener('visibilitychange', this.handleVisiable)
       if(this.keyEventImpl)  
       KeyInputHandler.removeEventListener(this.keyEventImpl);
-      // storage.removeAll()
     },
     // websocket 连接相关方法-------------------------------------------------------------------------
     initWebSocket() {
-      const ws_url = `ws://${this.deviceIP}:8006/?action=proxy&remote=tcp%3A8886&udid=${this.$route.query.udid}`
+      var ws_url = `ws://${this.deviceIP}:8006/?action=proxy&remote=tcp%3A8886&udid=${this.$route.query.udid}`
+      if(this.wsUrl){
+        ws_url = this.wsUrl
+      }
       console.log(ws_url)
       this.websocket = new WebSocket(ws_url)
       this.websocket.onopen = this.websocketonopen
@@ -482,6 +484,7 @@ export default {
           // clearTimeout(this)
         }, 3*1000);
       }
+
     },
     websokectonmessage(e) {
       if (e.data instanceof Blob) {
@@ -493,10 +496,14 @@ export default {
           if (data.byteLength > that.MAGIC_BYTES_INITIAL.length) {
             const magicBytes = new Uint8Array(data, 0, that.MAGIC_BYTES_INITIAL.length)
             if (EqualArrays(magicBytes, that.MAGIC_BYTES_INITIAL)) {
+              /**
+               * 1.手机本身横竖屏切换引起的大小变化
+               * 2.鼠标拉伸起起来的大小变化
+               */
               if(!that.hasInitialInfo){
                 setTimeout(()=>{
                   that.reloadWindow = function(){
-                    remote.getCurrentWindow().reload()
+                    // remote.getCurrentWindow().reload()
                   }
                   remote.getCurrentWindow().on("will-resize",(event, newBounds)=>{
                     console.log("will-resize")
@@ -507,6 +514,7 @@ export default {
                   // remote.getCurrentWindow().on("resize", that.resizeWindow);
                 },100)
               }
+              console.log('handleInitialInfo')
               that.handleInitialInfo(data)
               if(that.reloadWindow!=null){
                 that.reloadWindow()
@@ -529,9 +537,12 @@ export default {
         }
       }
     },
-    websocketonerror() {
+    websocketonerror(e) {
       console.log('ws error')
-      remote.getCurrentWindow().close()
+      this.$message(e,"error")
+      setTimeout(() => {
+        remote.getCurrentWindow().close()
+      },1000)
     },
     websocketclose(e) {
       console.log('ws close', e)
@@ -541,7 +552,7 @@ export default {
     //
     // 画面播放相关方法 -----------------------------------------------------------------------------
     handleInitialInfo(data) {
-      console.log(new Uint8Array(data, 0).length)
+      var tmpScreenInfo,tmpVideoSettings;
       let offset = this.MAGIC_BYTES_INITIAL.length
       // let nameBytes = new Uint8Array(data, offset, this.DEVICE_NAME_FIELD_LENGTH)
       offset += this.DEVICE_NAME_FIELD_LENGTH
@@ -556,77 +567,80 @@ export default {
         rest = rest.slice(DisplayInfo.BUFFER_LENGTH)
         rest = rest.slice(4)
         const screenInfoBytesCount = rest.readInt32BE(0)
+
         rest = rest.slice(4)
         if (screenInfoBytesCount) {
-          this.screenInfo = ScreenInfo.fromBuffer(rest.slice(0, screenInfoBytesCount))
-          this.screenInfo.deviceRotation = this.displayInfo.rotation
+          // this.screenInfo = ScreenInfo.fromBuffer(rest.slice(0, screenInfoBytesCount))
+          // this.screenInfo.deviceRotation = this.displayInfo.rotation
+          tmpScreenInfo = ScreenInfo.fromBuffer(rest.slice(0, screenInfoBytesCount))
+          tmpScreenInfo.deviceRotation = this.displayInfo.rotation
           rest = rest.slice(screenInfoBytesCount)
         }
         
         const videoSettingsBytesCount = rest.readInt32BE(0)
         rest = rest.slice(4)
         if (videoSettingsBytesCount) {
-          this.videoSettings = VideoSettings.fromBuffer(rest.slice(0, videoSettingsBytesCount))
+          // this.videoSettings = VideoSettings.fromBuffer(rest.slice(0, videoSettingsBytesCount))
+          tmpVideoSettings = VideoSettings.fromBuffer(rest.slice(0, videoSettingsBytesCount))
           rest = rest.slice(videoSettingsBytesCount)
-          console.log(this.videoSettings)
-          
         }
       }
+
+
+      this.screenInfo = tmpScreenInfo
+      this.videoSettings = tmpVideoSettings
+      
       this.hasInitialInfo = true
       this.triggerInitialInfoEvents()
     },
     triggerInitialInfoEvents() {
       this.pause()
-      // this.playing = false
       if (this.hasInitialInfo) {
         this.onDisplayInfo()
       }
     },
     onDisplayInfo() {
-      if (this.state === this.STATE2.PAUSED) {
-        this.play()
-      }
+      // if (this.state === this.STATE2.PAUSED) {
+      //   this.play()
+      // }
       
       if (!this.screenInfo || !this.videoSettings || !this.playing) {
+        console.log("onDisplayInfo")
         const event = this.createSetVideoSettingsCommand()
         this.websocket.send(event)
         this.playing = true
         return
       }
       
-      let deviceRotation = storage.getItem("deviceRotation")
-      // 如果旧的方向与新的方向不同，则使用保存好的旧长宽重新加载
-      if(deviceRotation!=null &&deviceRotation.length!=0 && this.screenInfo.deviceRotation!=deviceRotation){
-        let size =storage.getItem(`size${this.screenInfo.deviceRotation}`)
-        if(size){
-          size = JSON.parse(size)
-          console.log("size",size)
-          let saved_width =  size["width"],saved_height= size["height"]
-              storage.removeItem("deviceRotation")
-              // 重新获取到的实际宽高会比请求的小，所以width+30
-              storage.setItem(`size`,JSON.stringify({"width":saved_width+30,"height":saved_height}))
-              this.init()
-              return
-          }
-      }else{
-        const { width, height } = this.screenInfo.videoSize
-        storage.setItem("deviceRotation",`${this.screenInfo.deviceRotation}`)
-        storage.setItem(`size${this.screenInfo.deviceRotation}`,JSON.stringify({"width":width,"height":height}))
-      }
-      
       if(this.screenTimer){
         clearTimeout(this.screenTimer)
       }
-      // this.setScreen()
-      let that = this;
-      this.screenTimer =setTimeout(() => {
-        that.setScreen()
-        clearTimeout(that.screenTimer)
-
-      }, 100); 
-
-      // this.debounce(this.setScreen())
+      this.setScreen()
       
+    },
+    setScreen() {
+      if (this.screenInfo) {
+        // 触控板
+        const { width, height } = this.screenInfo.videoSize
+        const touchableCanvas = document.getElementById('touch-player')
+        touchableCanvas.width = width
+        touchableCanvas.height = height
+        touchableCanvas.style.margin = `0 0 0 0`
+
+        // 显示板
+        const videoableCanvas = document.getElementById('video-player')
+        videoableCanvas.width = width
+        videoableCanvas.height = height
+        videoableCanvas.style.margin = `0 0 0 0`
+
+        const canvas_box = document.getElementById('canvas_box')
+        canvas_box.width = width
+        canvas_box.height = height
+        canvas_box.style.margin = `0 0 0 0`
+
+        this.setScreenSize(width,height)
+        this.drop()
+      }
     },
     createSetVideoSettingsCommand() {
       const temp = VideoSettingsFun.toBuffer(this.currentSettings)
@@ -667,7 +681,6 @@ export default {
         }
         this.converter = new VideoConverter(video_element, fps, fpf)
         setLogger((msg)=>{
-          // console.log(msg)
         },(err)=>{
           console.error(err)
         })
@@ -680,7 +693,11 @@ export default {
       if (this.converter) {
         this.appendRawData(new Uint8Array([]))
         this.converter.pause()
+        /**
+         * electron 中 delete并没有实际回收对象
+         */
         delete this.converter
+        this.converter = null 
       }
     },
     appendRawData(data) {
@@ -689,85 +706,56 @@ export default {
           this.converter.appendRawData(data)
         } catch (error) {
           console.error(error)
-          this.converter.reset()
         }
       }
     },
-    setScreen() {
-      // this.pause()
-      if (this.screenInfo) {
-        // 触控板
-        const { width, height } = this.screenInfo.videoSize
-        const touchableCanvas = document.getElementById('touch-player')
-        touchableCanvas.width = width
-        touchableCanvas.height = height
-        touchableCanvas.style.margin = `0 0 0 0`
-
-        // 显示板
-        const videoableCanvas = document.getElementById('video-player')
-        videoableCanvas.width = width
-        videoableCanvas.height = height
-        videoableCanvas.style.margin = `0 0 0 0`
-
-        const canvas_box = document.getElementById('canvas_box')
-        canvas_box.width = width
-        canvas_box.height = height
-        canvas_box.style.margin = `0 0 0 0`
-        
-        this.setScreenSize(width,height)
-        this.drop()
-      }
-    },
+    
     setScreenSize(bodyWidth,bodyHeight){
 
       if(bodyWidth ==undefined || bodyHeight == undefined || bodyWidth <=0 || bodyHeight <=0 || bodyWidth === bodyHeight)
           return
-      // remote.getCurrentWindow().resizable = true
       bodyWidth = bodyWidth+42
       bodyHeight = bodyHeight+4
-      // remote.getCurrentWindow().setContentBounds({ height: bodyHeight, width : bodyWidth, x: 50, y:50 })
-      // remote.getCurrentWindow().setSize(bodyWidth,bodyHeight)
       remote.getCurrentWindow().setContentSize(bodyWidth,bodyHeight)
-      console.log("=====setScreenSize=========")
-      // remote.getCurrentWindow().resizable = false
       
     },
     resizeWindow(event, newBounds){
       const win = event.sender;
       event.preventDefault();//拦截，使窗口先不变
       const currentSize = win.getSize();
-      // console.log(newBounds)
-      // const widthChanged = (currentSize[0] != newBounds.width);//判断是宽变了还是高变了，两者都变优先按宽适配
-      // if(widthChanged){
-      //     win.setContentSize(newBounds.width, parseInt(newBounds.width / (realSize.width / realSize.height) + 0.5));
-      // } else {
-      //     win.setContentSize(parseInt((realSize.width / realSize.height) * newBounds.height + 0.5), newBounds.height);
-      // }
       storage.setItem("isResizeComplate",false)
       if(this.resizeChangeTimer){
         clearTimeout(this.resizeChangeTimer)
       }
       let that = this;
       this.resizeChangeTimer =setTimeout(() => {
-        storage.setItem("isResizeComplate",true)
         let bodyHeight,bodyWidth
         bodyWidth = currentSize[0]
         bodyHeight = currentSize[1]
-        storage.setItem(`size`,JSON.stringify({"width":bodyWidth,"height":bodyHeight}))
         
         that.screenInfo = null;
+
+        /**
+         * scrcpy会根据width与height中最大值调整大小
+         */
+        if(bodyHeight>bodyWidth){
+          bodyWidth = bodyHeight
+        }else{
+          bodyHeight = bodyWidth
+        }
         that.currentSettings.bounds = { height: bodyHeight, width : bodyWidth, h: bodyHeight, w: bodyWidth }
         that.websocket.send(that.createSetVideoSettingsCommand())
-        that.triggerInitialInfoEvents()
         that.canRaw = true;
         that.hasInitialInfo = true;
-        // that.init()
         clearTimeout(that.resizeChangeTimer)
-
       }, 500); 
+
+
+      
+      
     },
     onVideo(data) {
-      if (this.state === this.STATE2.PAUSED) {
+      if (this.state === this.STATE2.PAUSED && this.playing) {
         this.play()
       }
       if (this.state === this.STATE2.PLAYING) {
@@ -1004,7 +992,7 @@ export default {
       let fileData = e.dataTransfer.files;
       let apkPath = fileData[0]["path"]
       const apkName = fileData[0]["name"]
-      const duration = 2000
+      const duration = 3000
       const offset = -15
       if(!apkName.endsWith("apk")){
         console.log(`${apkPath} is not a apk` )
@@ -1017,34 +1005,65 @@ export default {
         });
         return
       }
-      this.$message({
-          message: `开始安装${apkName}`,
-          type: 'info',
-          duration:duration,
-          offset:offset,
-          center: true
-      });
-      // const client = Adb.createClient();
-      const client = Adb.createClient({"host":this.deviceIP,"bin":path.join(process.env.NODE_ENV === 'development'?path.resolve("")/*项目目录*/:process.resourcesPath,`vendor/${process.platform ==="win32"?"/adb/adb.exe":""}`)})
+      
+      const client = this.adbClient
       let that = this
-      client.install(this.$route.query.udid,apkPath).then(()=>{
-        this.$message({
-          message: `安装成功`,
-          type: 'success',
-          duration:duration,
-          offset:offset,
-          center: true
-        });
-      }).catch(function(err) {
-        console.error('install apk fail:', err.stack)
-        that.$message({
-          message: `安装失败${err.stack}`,
-          type: 'error',
-          duration:duration+1000,
-          offset:offset,
-          center: true
-        });
-      })
+      let deviceID = this.$route.query.udid
+      client.push(this.$route.query.udid,apkPath,`/data/local/tmp/${apkName}`)
+      .then(function(transfer) {
+          console.log(transfer.stats.bytesTransferred)
+          return new Promise(function(resolve, reject) {
+            let uploadMessage = that.$message({
+                    message: `<p id='upload_apk'>上传中</p>`,
+                    showClose: true,
+                    type: 'success',
+                    duration:0,
+                    offset:offset,
+                    center: true,
+                    dangerouslyUseHTMLString:true
+                  });
+            let messageBox = document.getElementById('upload_apk')
+            transfer.on('progress', function(stats) {
+              let bytesTransferred = parseInt(stats.bytesTransferred/1024/1024)
+              if(messageBox)
+                messageBox.textContent = `上传中:${bytesTransferred}M`
+            })
+            transfer.on('end', function() {
+              console.log('[%s] Push complete', deviceID)
+              if(uploadMessage){
+                uploadMessage.close()
+              }
+              that.$message({
+                message: `开始安装${apkName}`,
+                type: 'info',
+                duration:duration,
+                offset:offset,
+                center: true
+            });
+              resolve()
+            })
+            transfer.on('error', reject)
+          })
+        }).then(function() {
+            let cmd = `pm install -r -g -t /data/local/tmp/${apkName}`
+            console.log(cmd)
+            client.shell(deviceID,cmd) .then(Adb.util.readAll)
+              .then(function(output) {
+                let result = output.toString().trim()
+                  that.$message({
+                    message: result,
+                    type: result ==="Success"?'success':"error",
+                    duration:duration,
+                    offset:offset,
+                    center: true
+                  });
+              }).catch(function(err) {
+                console.error('Something went wrong:', err.stack)
+              })
+            })
+        .catch(function(err) {
+          console.error('Something went wrong:', err.stack)
+        })
     },
     getMaxSize() {
         // if (!this.controlButtons) {
@@ -1080,93 +1099,6 @@ export default {
       }
     },
 
-    // logcat 相关代码 -----------------------------------------------------------------------------
-    startLog() {
-      startLogcat({ serial: this.serial, type: this.logcat_type }).then(() => {
-        this.can_log = false
-        this.downloading = true
-        this.downdone = false
-      })
-    },
-    stopLog() {
-      stopLogcat({ serial: this.serial }).then(res => {
-        this.can_log = true
-        this.downloading = false
-        this.downdone = true
-        this.down_path = res.data.file_url
-      })
-    },
-    startLog2() {
-      this.can_log = false
-      this.websocket.send(JSON.stringify({
-        command: 'start',
-        data: []
-      }))
-    },
-    stopLog2() {
-      this.can_log = true
-      this.websocket.send(JSON.stringify({
-        command: 'stop',
-        data: []
-      }))
-    },
-    clearLog() {
-      this.logcat_list_tag.innerHTML = ''
-      this.logcat_count = 0
-    },
-    setLogcat(data) {
-      if (this.logcat_count > 3000) {
-        this.logcat_list_tag.innerHTML = ''
-        this.logcat_count = 0
-        return
-      }
-
-      if (!this.canRaw) {
-        return
-      }
-
-      // 筛选条件
-      if (this.logcat_type !== 'A') {
-        if (this.logcat_type !== data['level']) {
-          return
-        }
-      }
-      if (this.logcat_pid) {
-        if (this.logcat_pid !== data['pid']) {
-          return
-        }
-      }
-      if (this.logcat_tid) {
-        if (this.logcat_tid !== data['tid']) {
-          return
-        }
-      }
-      if (this.logcat_tag) {
-        const index2 = data['tag'].indexOf(this.logcat_tag)
-        if (index2 === -1) {
-          return
-        }
-      }
-      if (this.logcat_message) {
-        const index = data['message'].indexOf(this.logcat_message)
-        if (index === -1) {
-          return
-        }
-      }
-
-      const p = document.createElement('p')
-      p.className = 'logcat-message'
-      const s1 = document.createElement('span')
-      const s2 = document.createElement('span')
-      s1.className = this.logcat_class[data['level']]
-      s1.innerText = data['level']
-      p.appendChild(s1)
-      s2.innerText = `${data['time']} ${data['pid']} ${data['tid']} ${data['tag']} ${data['message']}`
-      p.appendChild(s2)
-      this.logcat_list_tag.insertBefore(p, this.logcat_list_tag.children[0])
-      this.logcat_count++
-    }
-    // --------------------------------------------------------------------------------------------
   }
 }
 </script>
