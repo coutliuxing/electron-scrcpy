@@ -34,7 +34,7 @@ class MainInit {
       // height: 800,
       useContentSize: true,
       // width: 1700,
-      width:960,
+      width:1000,
       // minWidth: 1366,
       show: false,
       frame: config.IsUseSysTitle,
@@ -48,7 +48,8 @@ class MainInit {
         devTools: process.env.NODE_ENV === 'development',
         // devTools: true,
         // 在macos中启用橡皮动画
-        scrollBounce: process.platform === 'darwin'
+        scrollBounce: process.platform === 'darwin',
+        enableRemoteModule:true
       }
     })
     // 赋予模板
@@ -183,7 +184,7 @@ class MainInit {
   // 加载窗口函数
   loadingWindow(loadingURL: string) {
     this.loadWindow = new BrowserWindow({
-      width: 400,
+      width: 540,
       height: 600,
       frame: false,
       skipTaskbar: true,

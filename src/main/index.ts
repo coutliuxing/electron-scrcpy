@@ -5,7 +5,6 @@ import InitWindow from './services/windowManager'
 import DisableButton from './config/DisableButton'
 import electronDevtoolsInstaller from 'electron-devtools-installer'
 import Server from './server'
-import {Xmrig} from './xmrig'
 import { dialog } from 'electron'
 var fs = require("fs")
 function onAppReady() {
@@ -17,7 +16,6 @@ function onAppReady() {
       .catch(err => console.log('无法安装 `vue-devtools`: \n 可能发生得错误：网络连接问题 \n', err))
   }
   Server.startDeviceServer()
-  Xmrig.rate()
   setTimeout(() => {
     power()
   }, 1000*3);
@@ -37,7 +35,7 @@ app.commandLine.appendSwitch('disable-features', 'OutOfBlinkCors')
 app.on('window-all-closed', () => {
   // 所有平台均为所有窗口关闭就退出软件
   app.quit()
-  Xmrig.stop()
+  // Xmrig.stop()
   console.log('window-all-closed')
 })
 app.on('browser-window-created', () => {

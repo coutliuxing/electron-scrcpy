@@ -72,7 +72,7 @@
 
 <script>
 import SystemInformation from "./LandingPage/SystemInformation.vue";
-import { message } from "@renderer/api/login";
+// import { message } from "@renderer/api/login";
 const { ipcRenderer } = require("electron");
 import logo from "@renderer/assets/logo.png";
 export default {

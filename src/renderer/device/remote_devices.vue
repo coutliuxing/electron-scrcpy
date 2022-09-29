@@ -2,10 +2,10 @@
 <div  style="text-align: center;margin:8px">
     <el-input v-model="ipAddress" >
      <template #append>
-        <el-button @click="saveRemoteIP()" size="mini" type="primary">确定</el-button>
+        <el-button @click="saveRemoteIP()" size="mini" type="success">确定</el-button>
       </template>  
     </el-input>
-    <div class="ip-input-alter">ps:连接其他电脑的手机设备，输入对应ip并确保对应电脑启动了本客户端</div>
+    <div class="ip-input-alter">连接其他电脑的手机设备，输入对应ip并确保对应电脑启动了本客户端</div>
    
 </div>
 

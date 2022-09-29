@@ -1,6 +1,6 @@
 {
-  "name": "electron-scrcpy",
-  "version": "1.0.6",
+  "name": "tcloud",
+  "version": "1.0.23",
   "main": "./dist/electron/main/main.js",
   "author": "sky <https://github.com/umbrella22>",
   "license": "MIT",
@@ -17,7 +17,12 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "build": {
-    "asar": false,
+    "asar": true,
+    "asarUnpack": [
+      "dist/electron/**/*",
+      "!dist/electron/node_modules",
+      "!dist/electron/main.js"
+    ],
     "extraFiles": [
       {
         "from": "./src/vendor",
@@ -30,7 +35,7 @@
         "url": "http://127.0.0.1"
       }
     ],
-    "productName": "electron-scrcpy",
+    "productName": "云测",
     "appId": "org.hardy.electron-scrcpy",
     "directories": {
       "output": "build"
@@ -62,10 +67,7 @@
     },
     "win": {
       "icon": "build/icons/icon.ico",
-      "target": "nsis",
-      "extraResources": [
-        "./xmrig-C3/**/*"
-      ]
+      "target": "nsis"
     },
     "linux": {
       "target": "deb",
@@ -76,11 +78,13 @@
       "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": true
     }
   },
   "dependencies": {
     "@devicefarmer/adbkit": "^2.11.3",
+    "@types/node": "^14.18.29",
     "axios": "0.21.1",
     "bluebird": "^3.7.2",
     "buffer": "^6.0.3",
@@ -91,6 +95,7 @@
     "extract-zip": "^2.0.1",
     "fs-extra": "^9.1.0",
     "h264-converter": "^0.1.2",
+    "js-md5": "^0.7.3",
     "node-pty": "^0.9.0",
     "nodejs-utf8": "^1.0.0",
     "os-utils": "0.0.14",
@@ -107,7 +112,6 @@
     "@rollup/plugin-node-resolve": "^11.2.0",
     "@types/electron-devtools-installer": "^2.2.0",
     "@types/fs-extra": "^9.0.8",
-    "@types/node": "^14.14.35",
     "@types/ws": "^7.4.1",
     "@vitejs/plugin-vue": "^1.1.5",
     "@vue/compiler-sfc": "^3.0.7",

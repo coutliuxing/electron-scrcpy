@@ -16,8 +16,9 @@ const fakeHost = '127.0.0.1:6666';
 const fakeHostRe = /127\.0\.0\.1:6666/;
 const client = Adb.createClient({
     "host":"127.0.0.1",
-    "bin":path.join(process.env.NODE_ENV === 'development'?path.resolve("")/*项目目录*/:process.resourcesPath,`vendor/${process.platform ==="win32"?"/adb/adb.exe":""}`)})
-export class AdbUtils {
+    // "bin":path.join(process.env.NODE_ENV === 'development'?path.resolve("")/*项目目录*/:process.resourcesPath,`vendor/${process.platform ==="win32"?"/adb/adb.exe":""}`)
+})
+export  class AdbUtils {
     
     public static async forward(serial: string, remote: string): Promise<number> {
         // const client =Adb.createClient();
@@ -249,6 +250,7 @@ export class AdbUtils {
         return props['ro.product.model'] || 'Unknown device';
     }
     public static getClient(){
+        console.log(client.options)
         return client
     }
 }

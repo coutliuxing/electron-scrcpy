@@ -1,12 +1,13 @@
 import { autoUpdater } from 'electron-updater'
 import { ipcMain, BrowserWindow } from 'electron'
+import path from 'path'
 /**
  * -1 检查更新失败 0 正在检查更新 1 检测到新版本，准备下载 2 未检测到新版本 3 下载中 4 下载完成
  **/
 class Update {
   public mainWindow: BrowserWindow
   constructor(mainWindow: BrowserWindow) {
-    autoUpdater.setFeedURL('http://127.0.0.1:25565/')
+    autoUpdater.setFeedURL('http://192.168.6.241:4507/denodir')
     this.mainWindow = mainWindow
     // 注册事件
     this.checkUpdate()
@@ -17,6 +18,28 @@ class Update {
     this.done()
     this.quitInstall()
     this.error()
+
+    
+    // 本地开发环境，改变app-update.yml地址
+    if (process.env.NODE_ENV === 'development') {
+      // const publishUrl = process.env.VUE_APP_PUBLISH_URL
+      // autoUpdater.setFeedURL({
+      //   provider: 'generic',
+      //   url: publishUrl
+      // })
+      // if (isMac) {
+      //   autoUpdater.updateConfigPath = path.join(__dirname, 'mac/dev-sidecar.app/Contents/Resources/app-update.yml')
+      // } else if (isLinux) {
+      //   autoUpdater.updateConfigPath = path.join(__dirname, 'linux-unpacked/resources/app-update.yml')
+      // } else {
+        console.log(path.join(path.resolve(""), '/build/win-unpacked/resources/app-update.yml'))
+        autoUpdater.updateConfigPath = path.join(path.resolve(""), '/build/win-unpacked/resources/app-update.yml')
+      // }
+    }
+
+    autoUpdater.checkForUpdatesAndNotify().then((value)=>{
+      console.log(value)
+    })
   }
   // 负责向渲染进程发送信息
   Message(mainWindow: BrowserWindow, type: Number, data?: String) {

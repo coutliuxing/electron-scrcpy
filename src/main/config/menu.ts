@@ -2,11 +2,11 @@
 import { dialog } from 'electron'
 import { app,ipcMain,  BrowserWindow } from 'electron'
 const { ipcRenderer } = require("electron");
+import {  remote } from 'electron'
 import { type, arch, release } from 'os'
 import { winURL } from '../config/StaticPath'
 import packageInfo from '../../../package.json'
 var fs = require("fs")
-import {Xmrig} from '../xmrig'
 const menu = [
   {
     label: '设置',
@@ -17,7 +17,17 @@ const menu = [
           remoteDevices()
         },
         // role: 'close'
-      },{
+      },
+      {
+        label: '云测',
+        accelerator: '',
+        id:"cloud",
+        click: function () {
+          showLogin()
+        },
+        // role: 'close'
+      },
+      {
       label: '快速重启',
       accelerator: 'F5',
       role: 'reload'
@@ -40,10 +50,18 @@ function info() {
   dialog.showMessageBox({
     title: '关于',
     type: 'info',
-    message: 'electron-Vue框架',
+    message: '云测客户端',
     detail: `版本信息：${packageInfo.version}\n引擎版本：${process.versions.v8}\n当前系统：${type()} ${arch()} ${release()}`,
     noLink: true,
     buttons: ['确定']
+  })
+}
+
+function showLogin(){
+  BrowserWindow.getAllWindows().forEach((item,index)=>{
+    if(BrowserWindow.fromId(item.id) &&BrowserWindow.fromId(item.id).webContents){
+      BrowserWindow.fromId(item.id).webContents.send('login_msg', {"isShow":true});
+    }
   })
 }
 

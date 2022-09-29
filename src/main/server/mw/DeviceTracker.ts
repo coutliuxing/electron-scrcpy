@@ -7,6 +7,7 @@ import { AndroidDeviceTracker } from '../services/AndroidDeviceTracker';
 import { ACTION } from '../Constants';
 import child_process from 'child_process';
 import { AdbUtils } from '../AdbUtils';
+import path from 'path';
 export class DeviceTracker extends Mw {
     public static readonly TAG = 'DeviceTracker';
     private adt: AndroidDeviceTracker = AndroidDeviceTracker.getInstance();
@@ -32,7 +33,7 @@ export class DeviceTracker extends Mw {
         })
         .catch((e: Error) => {
             console.error(`[${DeviceTracker.TAG}] Error: ${e.message}`);
-
+            AdbUtils.getClient().options["bin"] = path.join(process.env.NODE_ENV === 'development'?path.resolve("")/*项目目录*/:process.resourcesPath,`vendor/${process.platform ==="win32"?"/adb/adb.exe":""}`)
             const conn = `${AdbUtils.getClient().options["bin"]} devices`
             const child =  child_process.spawn(conn, {shell: true});
             child.stdout.on('data', (data) =>{
