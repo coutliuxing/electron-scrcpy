@@ -43,7 +43,8 @@
           <el-tooltip effect="dark" content="最近任务" placement="left-end">
             <i id="overview" class="btns el-icon-s-operation" type="primary" style="margin-bottom: 10px;"/>
           </el-tooltip>
-          <el-tooltip effect="dark" content="手机剪切板" placement="left-end"> <i id="copy" class="btns el-icon-document-copy" type="primary" /></el-tooltip>
+          <!-- 利用焦点变化处理剪切板功能，this.initCipboard() -->
+          <!-- <el-tooltip effect="dark" content="手机剪切板" placement="left-end"> <i id="copy" class="btns el-icon-document-copy" type="primary" /></el-tooltip> -->
         </div>
       </el-tabs>
     </div>
@@ -180,7 +181,7 @@ import KeyCodeFun from './js/KeyCodeFun'
 import { ElMessage, ElMessageBox  } from 'element-plus'
 // import  Buffer  from 'buffer/'
 const {Buffer} = require('buffer/')
-const { remote } = require('electron')
+const { remote,globalShortcut,clipboard  } = require('electron')
 const Adb  = require('@devicefarmer/adbkit/lib/adb')
 import {KeyInputHandler,KeyEventImpl} from './keyhandler/KeyInputHandler';
 // const KeyEventImpl = require('./keyhandler/KeyInputHandler');
@@ -439,6 +440,21 @@ export default {
       
       this.touch_tag = document.getElementById('touch-player')
       document.addEventListener('visibilitychange', this.handleVisiable) 
+      this.initCipboard()
+    },
+    initCipboard(){
+      remote.getCurrentWindow().on('blur', (e)=>{
+        console.log('blur',e)
+      });
+      remote.getCurrentWindow().on('focus', (e)=>{
+        let text = clipboard.readText()
+        if(text && text!=this.clipboardInput){
+          console.log('focus',e)
+          this.clipboardInput = text
+          this.setClipboard()
+        }
+        
+      });
     },
     cloudInit(){
       if(this.$route.query.ws_url){
@@ -456,10 +472,6 @@ export default {
       if (this.websocket !== null) {
       this.websocket.close()
       }
-
-      // if (this.log_ws !== null) {
-      //   this.log_ws.close()
-      // }
       this.pause()
       document.body.removeEventListener('mousedown', this.onMouseEvent)
       document.body.removeEventListener('mouseup', this.onMouseEvent)
@@ -479,10 +491,8 @@ export default {
       }
     });
     }
-      // storage.removeAll()
       let that = this
       if(this.adbRemote){
-        // this.adbClient.connect(this.deviceIP,this.adbRemote)
         Cloud.disconnectDevice(this.deviceIP,this.adbRemote,this.bin).then(function(value){
         that.$message({message: value,type: 'success',duration:2000,offset:-15,center: true});
 
@@ -523,17 +533,12 @@ export default {
         this.keyEventImpl = new KeyEventImpl(this.websocket)
         setTimeout(() => {
           KeyInputHandler.addEventListener(this.keyEventImpl);
-          // clearTimeout(this)
         }, 3*1000);
       }
       let that = this
       if(this.adbRemote){
-        // this.adbClient.connect(this.deviceIP,this.adbRemote)
         Cloud.connectDevice(this.adbBin,this.deviceIP,this.adbRemote).then(function(value){
           that.$message({message: value,type: 'success',duration:2000,offset:-15,center: true});
-
-        // let err = `<p> adb connect ${that.deviceIP}:${that.adbRemote}</p> \n 连接失败请尝试手动 \n ${111}`
-        //   that.$message({message: err,type: 'error',duration:0,offset:-15,center: true,showClose: true,dangerouslyUseHTMLString:true});
 
         },function(error){
           let err = `<p> adb connect ${that.deviceIP}:${that.adbRemote}</p> \n 连接失败请尝试手动 \n ${error}`
@@ -591,6 +596,7 @@ export default {
                 // this.emit('deviceMessage', message);
                 // console.log(message.getText())
                 that.clipboardInput = message.getText();
+                clipboard.writeText(that.clipboardInput)
                 return;
                 }
           }
@@ -814,10 +820,6 @@ export default {
         that.hasInitialInfo = true;
         clearTimeout(that.resizeChangeTimer)
       }, 500); 
-
-
-      
-      
     },
     onVideo(data) {
       if (this.state === this.STATE2.PAUSED && this.playing) {
@@ -831,6 +833,7 @@ export default {
     //
     // 触控相关方法 ---------------------------------------------------------------------------------
     onMouseEvent(e) {
+ 
       if (e.type === 'mousedown') {
         this.down++;
         /**
@@ -870,6 +873,8 @@ export default {
         if(e.button ==2){
           this.mouseRightEvent(1)
         }
+
+
       }
     },
     mouseRightEvent(action){
