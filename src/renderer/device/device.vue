@@ -263,7 +263,7 @@ export default {
       }
     },
     async open(index,row){
-      var url = `/converter?udid=${row['udid']}&ip=${row["address"]["ip"]}`
+      var url = `/mobile_converter?udid=${row['udid']}&ip=${row["address"]["ip"]}`
       if(row["cloud.ext"] && this.usingDevices.length>=3){
         this.message("最多只支持同时打开三台云测设备~",'warning')
         return

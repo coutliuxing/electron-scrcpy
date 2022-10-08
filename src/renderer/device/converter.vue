@@ -188,7 +188,6 @@ import {KeyInputHandler,KeyEventImpl} from './keyhandler/KeyInputHandler';
 import {CommandControlMessage} from './controlMessage/CommandControlMessage'
 import DeviceMessage from  './controlMessage/DeviceMessage'
 import DisplayInfo from './DisplayInfo'
-import Cloud from './Cloud'
 import VideoSettings from "./VideoSettings"
 import ScreenInfo from "./ScreenInfo"
 const storage = require('electron-localstorage');
@@ -381,8 +380,6 @@ export default {
       keyEventImpl:null,
       deviceIP:"localhost",
       wsUrl:"",
-      cloudDeviceId:-1,
-      adbRemote:"",
       adbBin:"",
       adbClient:null
     }
@@ -405,7 +402,6 @@ export default {
     if(this.$route.query.ip){
       this.deviceIP = this.$route.query.ip
     }
-    this.cloudInit()
     // 初始化某些变量
     this.MAGIC_BYTES_INITIAL = stringToUtf8ByteArray('scrcpy_initial')
     // this.pause()
@@ -416,6 +412,7 @@ export default {
     this.adbClient =  Adb.createClient({"host":this.deviceIP,"bin":this.adbBin})
   },
   mounted() {
+    console.log("converter mounted")
     // 云测需要准备时间，所以要隔一点时间去连接ws
     if(this.wsUrl){
       setTimeout(()=>{
@@ -444,29 +441,16 @@ export default {
     },
     initCipboard(){
       remote.getCurrentWindow().on('blur', (e)=>{
-        console.log('blur',e)
+        // console.log('blur',e)
       });
       remote.getCurrentWindow().on('focus', (e)=>{
         let text = clipboard.readText()
         if(text && text!=this.clipboardInput){
-          console.log('focus',e)
           this.clipboardInput = text
           this.setClipboard()
         }
         
       });
-    },
-    cloudInit(){
-      if(this.$route.query.ws_url){
-          this.wsUrl = this.$route.query.ws_url
-          
-      }
-      if(this.$route.query.remote){
-          this.adbRemote = this.$route.query.remote
-      }
-      if(this.$route.query.device_id){
-        this.cloudDeviceId = this.$route.query.device_id
-      }
     },
     destroy(){
       if (this.websocket !== null) {
@@ -479,28 +463,6 @@ export default {
       document.removeEventListener('visibilitychange', this.handleVisiable)
       if(this.keyEventImpl)  
       KeyInputHandler.removeEventListener(this.keyEventImpl);
-      if(this.cloudDeviceId!==-1){
-          remote.webContents.getAllWebContents().forEach((item,index)=>{
-          if(remote.BrowserWindow.fromId(item.id) && remote.BrowserWindow.fromId(item.id).webContents){
-            remote.BrowserWindow.fromId(item.id).webContents.send('converter_msg', 
-            {
-              "type":"release",
-              "id":this.cloudDeviceId,"ip":this.deviceIP,
-              "port":this.adbRemote
-            });
-      }
-    });
-    }
-      let that = this
-      if(this.adbRemote){
-        Cloud.disconnectDevice(this.deviceIP,this.adbRemote,this.bin).then(function(value){
-        that.$message({message: value,type: 'success',duration:2000,offset:-15,center: true});
-
-        },function(error){
-          that.$message({message: error,type: 'error',duration:2000,offset:-15,center: true});
-        })
-
-      }
     },
     // websocket 连接相关方法-------------------------------------------------------------------------
     initWebSocket() {
@@ -535,25 +497,10 @@ export default {
           KeyInputHandler.addEventListener(this.keyEventImpl);
         }, 3*1000);
       }
-      let that = this
-      if(this.adbRemote){
-        Cloud.connectDevice(this.adbBin,this.deviceIP,this.adbRemote).then(function(value){
-          that.$message({message: value,type: 'success',duration:2000,offset:-15,center: true});
+      this.onSocketOpened()
 
-        },function(error){
-          let err = `<p> adb connect ${that.deviceIP}:${that.adbRemote}</p> \n 连接失败请尝试手动 \n ${error}`
-          that.$message({message: err,type: 'error',duration:0,offset:-15,center: true,showClose: true,dangerouslyUseHTMLString:true});
-        })
-          
-
-        if(that.cloudDeviceId!==-1){
-            remote.webContents.getAllWebContents().forEach((item,index)=>{
-              if(remote.BrowserWindow.fromId(item.id) && remote.BrowserWindow.fromId(item.id).webContents){
-                remote.BrowserWindow.fromId(item.id).webContents.send('converter_msg', {"type":"connected","id":this.cloudDeviceId});
-              }
-            });
-          }
-      }
+    },
+    onSocketOpened(){
 
     },
     websokectonmessage(e) {

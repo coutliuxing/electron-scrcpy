@@ -5,5 +5,7 @@ export default [
     {path: '/converter',name: 'converter',
     component: () => import('@renderer/device/converter.vue'),meta:{showTop:false}},
     {path: '/remote_devices',name: 'remote_devices',
-    component: () => import('@renderer/device/remote_devices.vue'),meta:{showTop:false}}
+    component: () => import('@renderer/device/remote_devices.vue'),meta:{showTop:false}},
+    {path: '/mobile_converter',name: 'mobile_converter',
+    component: () => import('@renderer/device/mobile_converter.vue'),meta:{showTop:false}}
 ]
