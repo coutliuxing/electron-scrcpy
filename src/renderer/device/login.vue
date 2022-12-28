@@ -87,7 +87,7 @@
                 
                 var that = this
                 console.log(this.form)
-                fetch('http://192.168.6.241:8069/zcloud_api/login',{
+                fetch('http://192.168.8.241:8069/zcloud_api/login',{
                     method:"POST",
                     mode: 'cors',
                     headers: {

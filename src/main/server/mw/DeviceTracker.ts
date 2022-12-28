@@ -33,15 +33,6 @@ export class DeviceTracker extends Mw {
         })
         .catch((e: Error) => {
             console.error(`[${DeviceTracker.TAG}] Error: ${e.message}`);
-            AdbUtils.getClient().options["bin"] = path.join(process.env.NODE_ENV === 'development'?path.resolve("")/*项目目录*/:process.resourcesPath,`vendor/${process.platform ==="win32"?"/adb/adb.exe":""}`)
-            const conn = `${AdbUtils.getClient().options["bin"]} devices`
-            const child =  child_process.spawn(conn, {shell: true});
-            child.stdout.on('data', (data) =>{
-                this.initDiscover(ws)
-            });
-            child.stderr.on('data', (data) =>{
-                console.log("child_process->",data.toString())
-            });
         });
     }
 

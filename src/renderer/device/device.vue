@@ -362,12 +362,12 @@ export default {
       this.refreshDevices(usr)
       this.refreshTimer = setInterval(() => {
           this.refreshDevices(usr)
-        }, 2000);
+        }, 4000);
     },
 
     refreshDevices(usr){
       let that = this
-      fetch(`http://192.168.6.241:8069/zcloud_api/stf/devices?brand=${-2}&screen=${-2}&system=${-2}&status=${-2}`,{
+      fetch(`http://192.168.8.241:8069/zcloud_api/stf/devices?brand=${-2}&screen=${-2}&system=${-2}&status=${-2}`,{
                         method:"get",
                         mode: 'cors',
                         headers: {
@@ -418,7 +418,7 @@ export default {
                     // "ro.product.cpu.abi": "arm64-v8a",
                     // "last.seen.active.timestamp": 1661409180528,
                     "address": {
-                        "ip": "192.168.6.241",
+                        "ip": "192.168.8.241",
                         "from": "cloud"
                     }
                 }
@@ -435,7 +435,7 @@ export default {
     async lockCloudDevice(row){
       let that = this
       // 请求使用
-      const  response =await fetch(`http://192.168.6.241:8069/zcloud_api/stf/device/use/${row["cloud.ext"]["id"]}`,{
+      const  response =await fetch(`http://192.168.8.241:8069/zcloud_api/stf/device/use/${row["cloud.ext"]["id"]}`,{
                   method:"post",
                   mode: 'cors',
                   headers: {
@@ -461,7 +461,7 @@ export default {
     },
     async releaseCloudDevice(usr,id){
       // 请求使用
-      const  response =await fetch(`http://192.168.6.241:8069/zcloud_api/stf/device/release/${id}`,{
+      const  response =await fetch(`http://192.168.8.241:8069/zcloud_api/stf/device/release/${id}`,{
                   method:"delete",
                   mode: 'cors',
                   headers: {
@@ -488,7 +488,7 @@ export default {
         return json
       }
     },
-    relaseRemoteLostDevice(host="192.168.6.241"){
+    relaseRemoteLostDevice(host="192.168.8.241"){
       /**
        * 释放已经解除占用但adb connect仍然连接的设备
        */

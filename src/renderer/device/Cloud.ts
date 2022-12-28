@@ -4,7 +4,7 @@ export default {
     async lockCloudDevice(usr,row){
         let that = this
         // 请求使用
-        const  response =await fetch(`http://192.168.6.241:8069/zcloud_api/stf/device/use/${row["cloud.ext"]["id"]}`,{
+        const  response =await fetch(`http://192.168.8.241:8069/zcloud_api/stf/device/use/${row["cloud.ext"]["id"]}`,{
                     method:"post",
                     mode: 'cors',
                     headers: {
@@ -28,7 +28,7 @@ export default {
         },
         async releaseCloudDevice(usr,id,bin=path.join(process.env.NODE_ENV === 'development'?path.resolve("")/*项目目录*/:process.resourcesPath,`vendor/${process.platform ==="win32"?"/adb/adb.exe":""}`)){
         // 请求使用
-        const  response =await fetch(`http://192.168.6.241:8069/zcloud_api/stf/device/release/${id}`,{
+        const  response =await fetch(`http://192.168.8.241:8069/zcloud_api/stf/device/release/${id}`,{
                     method:"delete",
                     mode: 'cors',
                     headers: {

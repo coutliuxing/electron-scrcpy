@@ -1062,7 +1062,7 @@ export default {
             transfer.on('error', reject)
           })
         }).then(function() {
-            let cmd = `pm install -r -g -t /data/local/tmp/${apkName}`
+            let cmd = `pm install  /data/local/tmp/${apkName}`
             console.log(cmd)
             client.shell(deviceID,cmd) .then(Adb.util.readAll)
               .then(function(output) {
