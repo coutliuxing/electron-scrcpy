@@ -111,6 +111,10 @@ export default {
           })
         }
       })
+
+      if (process.env.NODE_ENV === 'development') {
+        ChildWin.webContents.openDevTools({ mode: 'undocked', activate: true })
+      }
     })
   }
 }
